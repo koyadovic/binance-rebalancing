@@ -2,6 +2,24 @@ import sys
 import settings
 from binance import Client
 
+from decorators import execution_with_attempts
+
+
+@execution_with_attempts(attempts=3, wait_seconds=5)
+def place_buy_order(client, crypto, quantity):
+    client.order_market_buy(
+        symbol=f'{crypto}USDT',
+        quoteOrderQty=quantity  # in usdt
+    )
+
+
+@execution_with_attempts(attempts=3, wait_seconds=5)
+def place_sell_order(client, crypto, quantity):
+    client.order_market_sell(
+        symbol=f'{crypto}USDT',
+        quoteOrderQty=quantity  # in usdt
+    )
+
 
 client = Client(settings.API_KEY, settings.API_SECRET)
 
@@ -58,11 +76,10 @@ for crypto, data in rebalance.items():
     quantity = '{:.8f}'.format(quantity)
     try:
         print(f'Selling USDT {quantity} of {crypto}')
+
         # TODO uncomment this
-        # client.order_market_sell(
-        #     symbol=f'{crypto}USDT',
-        #     quoteOrderQty=quantity  # in usdt
-        # )
+        # place_sell_order(client, crypto, quantity)
+
         amount_sold += abs(diff) - 5.0
     except Exception as e:
         print(f'Warning, error selling {crypto}: {e}')
@@ -88,11 +105,11 @@ for crypto, data in rebalance.items():
         quantity = '{:.8f}'.format(quantity)
         try:
             print(f'Buying USDT {quantity} of {crypto}')
+
             # TODO uncomment this
-            # client.order_market_buy(
-            #     symbol=f'{crypto}USDT',
-            #     quoteOrderQty=quantity  # in usdt
-            # )
+            # place_buy_order(client, crypto, quantity)
+
+            amount_sold -= float(quantity)
             break
         except Exception as e:
             print(f'Warning, error buying {crypto}: {e}')
