@@ -48,8 +48,6 @@ def main():
             'min_quantity': float(client.get_symbol_info(f'{crypto}USDT')['filters'][2]['minQty'])
         }
 
-    print(f'TOTAL BALANCE: ${round(total_balance, 2)}')
-
     rebalance = {}
     for crypto, proportion in settings.portfolio_setting.items():
         wanted_balance = (settings.portfolio_setting[crypto] / 100) * total_balance
@@ -79,8 +77,10 @@ def main():
             'diff': diff
         }
 
+    # Printing summary and asking for rebalancing
     table.add_rows(table_rows)
     print(table.draw() + '\n')
+    print(f'TOTAL BALANCE: ${round(total_balance, 2)}')
     print(f'Proceed with rebalance?')
     response = input('(y/n) ').lower().strip()
     if response != 'y':
