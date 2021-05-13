@@ -35,8 +35,10 @@ def main():
     ]]
 
     client = Client(settings.API_KEY, settings.API_SECRET)
+
     compiled_data = {}
-    total_balance = 0.0
+
+    total_balance = float(client.get_asset_balance(asset='USDT')['free'])
     for crypto, proportion in settings.portfolio_setting.items():
         balance = float(client.get_asset_balance(asset=crypto)['free'])  # + float(client.get_asset_balance(asset=crypto)['locked'])
         avg_price = float(client.get_avg_price(symbol=f'{crypto}USDT')['price'])
@@ -100,7 +102,7 @@ def main():
             continue
         quantity = '{:.8f}'.format(quantity)
         try:
-            print(f'Selling USDT {quantity} of {crypto}')
+            print(f'> Selling USDT {quantity} of {crypto}')
             required_amount_sold += abs(diff) - 5.0
 
             # TODO uncomment this
@@ -108,11 +110,11 @@ def main():
 
             real_amount_sold += abs(diff) - 5.0
         except Exception as e:
-            print(f'Warning, error selling {crypto}: {e}')
+            print(f'! Warning, error selling {crypto}: {e}')
             continue
 
     if real_amount_sold == 0.0:
-        print(f'Nothing sold. Exiting')
+        print(f'! Nothing sold. Exiting')
         sys.exit(0)
 
     amount_sold_factor = real_amount_sold / required_amount_sold
@@ -129,14 +131,14 @@ def main():
                 continue
             quantity = '{:.8f}'.format(quantity)
             try:
-                print(f'Buying USDT {quantity} of {crypto}')
+                print(f'> Buying USDT {quantity} of {crypto}')
 
                 # TODO uncomment this
                 # place_buy_order(client, crypto, quantity)
 
                 break
             except Exception as e:
-                print(f'Warning, error buying {crypto}: {e}')
+                print(f'! Warning, error buying {crypto}: {e}')
                 continue
 
 
