@@ -1,3 +1,5 @@
+from texttable import Texttable
+
 from decorators import execution_with_attempts
 from binance import Client
 import settings
@@ -21,11 +23,22 @@ def place_sell_order(client, crypto, quantity):
 
 
 def main():
+    table = Texttable()
+    table.set_cols_align(["c", "c", "c", "c", "c", "c"])
+    table_rows = [[
+        'Symbol',
+        'Wanted amount',
+        'Wanted %',
+        'Current amount',
+        'Current %',
+        'Action'
+    ]]
+
     client = Client(settings.API_KEY, settings.API_SECRET)
     compiled_data = {}
     total_balance = 0.0
     for crypto, proportion in settings.portfolio_setting.items():
-        balance = float(client.get_asset_balance(asset=crypto)['free']) + float(client.get_asset_balance(asset=crypto)['locked'])
+        balance = float(client.get_asset_balance(asset=crypto)['free'])  # + float(client.get_asset_balance(asset=crypto)['locked'])
         avg_price = float(client.get_avg_price(symbol=f'{crypto}USDT')['price'])
         total_balance += (balance * avg_price)
         compiled_data[crypto] = {
@@ -46,16 +59,28 @@ def main():
         current_percentage = round((current_usdt / total_balance) * 100, 2)
         target_percentage = round(settings.portfolio_setting[crypto], 2)
 
+        row = [
+            crypto,
+            f'${round(wanted_balance, 2)}',
+            f'{target_percentage}%',
+            f'${round(current_usdt, 2)}',
+            f'{current_percentage}%',
+        ]
+
         if diff < 0:
-            print(f'For crypto {crypto} - Wanted {round(wanted_balance, 2)} ({target_percentage}%) - Current {round(current_usdt, 2)} ({current_percentage}%) - BUY ${abs(round(diff, 2))}')
+            row.append(f'BUY ${abs(round(diff, 2))}')
         else:
-            print(f'For crypto {crypto} - Wanted {round(wanted_balance, 2)} ({target_percentage}%) - Current {round(current_usdt, 2)} ({current_percentage}%) - SELL ${abs(round(diff, 2))}')
+            row.append(f'SELL ${abs(round(diff, 2))}')
+
+        table_rows.append(row)
         rebalance[crypto] = {
             'wanted_usdt': wanted_balance,
             'current_usdt': compiled_data[crypto]['usdt'],
             'diff': diff
         }
 
+    table.add_rows(table_rows)
+    print(table.draw() + '\n')
     print(f'Proceed with rebalance?')
     response = input('(y/n) ').lower().strip()
     if response != 'y':
