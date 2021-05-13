@@ -25,7 +25,7 @@ def main():
     compiled_data = {}
     total_balance = 0.0
     for crypto, proportion in settings.portfolio_setting.items():
-        balance = float(client.get_asset_balance(asset=crypto)['free'])  #  + float(client.get_asset_balance(asset=crypto)['locked'])
+        balance = float(client.get_asset_balance(asset=crypto)['free']) + float(client.get_asset_balance(asset=crypto)['locked'])
         avg_price = float(client.get_avg_price(symbol=f'{crypto}USDT')['price'])
         total_balance += (balance * avg_price)
         compiled_data[crypto] = {
@@ -35,17 +35,21 @@ def main():
             'min_quantity': float(client.get_symbol_info(f'{crypto}USDT')['filters'][2]['minQty'])
         }
 
-    print(f'TOTAL BALANCE: ${total_balance}')
+    print(f'TOTAL BALANCE: ${round(total_balance, 2)}')
 
     rebalance = {}
     for crypto, proportion in settings.portfolio_setting.items():
         wanted_balance = (settings.portfolio_setting[crypto] / 100) * total_balance
         current_usdt = compiled_data[crypto]['usdt']
         diff = current_usdt - wanted_balance
+
+        current_percentage = round((current_usdt / total_balance) * 100, 2)
+        target_percentage = round(settings.portfolio_setting[crypto], 2)
+
         if diff < 0:
-            print(f'For crypto {crypto} - Wanted {round(wanted_balance, 2)} - Current {round(current_usdt, 2)} - BUY ${abs(round(diff, 2))}')
+            print(f'For crypto {crypto} - Wanted {round(wanted_balance, 2)} ({target_percentage}%) - Current {round(current_usdt, 2)} ({current_percentage}%) - BUY ${abs(round(diff, 2))}')
         else:
-            print(f'For crypto {crypto} - Wanted {round(wanted_balance, 2)} - Current {round(current_usdt, 2)} - SELL ${abs(round(diff, 2))}')
+            print(f'For crypto {crypto} - Wanted {round(wanted_balance, 2)} ({target_percentage}%) - Current {round(current_usdt, 2)} ({current_percentage}%) - SELL ${abs(round(diff, 2))}')
         rebalance[crypto] = {
             'wanted_usdt': wanted_balance,
             'current_usdt': compiled_data[crypto]['usdt'],
@@ -53,7 +57,7 @@ def main():
         }
 
     print(f'Proceed with rebalance?')
-    response = input('(y/n)').lower().strip()
+    response = input('(y/n) ').lower().strip()
     if response != 'y':
         sys.exit(0)
 
