@@ -57,7 +57,8 @@ def main():
     if response != 'y':
         sys.exit(0)
 
-    amount_sold = 0.0
+    real_amount_sold = 0.0
+    required_amount_sold = 0.0
 
     # first sell operations
     for crypto, data in rebalance.items():
@@ -71,18 +72,21 @@ def main():
         quantity = '{:.8f}'.format(quantity)
         try:
             print(f'Selling USDT {quantity} of {crypto}')
+            required_amount_sold += abs(diff) - 5.0
 
             # TODO uncomment this
             # place_sell_order(client, crypto, quantity)
 
-            amount_sold += abs(diff) - 5.0
+            real_amount_sold += abs(diff) - 5.0
         except Exception as e:
             print(f'Warning, error selling {crypto}: {e}')
             continue
 
-    if amount_sold == 0.0:
+    if real_amount_sold == 0.0:
         print(f'Nothing sold. Exiting')
         sys.exit(0)
+
+    amount_sold_factor = real_amount_sold / required_amount_sold
 
     # second buy operations
     for crypto, data in rebalance.items():
@@ -91,7 +95,7 @@ def main():
             continue
         minimum = compiled_data[crypto]['min_quantity']
         for n in range(0, 50, 5):
-            quantity = abs(diff) - n
+            quantity = (abs(diff) - n) * amount_sold_factor
             if quantity < minimum:
                 continue
             quantity = '{:.8f}'.format(quantity)
@@ -101,7 +105,6 @@ def main():
                 # TODO uncomment this
                 # place_buy_order(client, crypto, quantity)
 
-                amount_sold -= float(quantity)
                 break
             except Exception as e:
                 print(f'Warning, error buying {crypto}: {e}')
