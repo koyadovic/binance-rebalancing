@@ -6,14 +6,13 @@ from tools import place_sell_order
 def main():
     client = Client(settings.API_KEY, settings.API_SECRET)
     for crypto, _ in settings.portfolio_setting.items():
-        balance = float(client.get_asset_balance(asset=crypto)['free']) + float(client.get_asset_balance(asset=crypto)['locked'])
+        balance = float(client.get_asset_balance(asset=crypto)['free'])
         avg_price = float(client.get_avg_price(symbol=f'{crypto}USDT')['price'])
         usdt = balance * avg_price
-        minimum = float(client.get_symbol_info(f'{crypto}USDT')['filters'][2]['minQty'])
 
         for n in range(0, 50, 5):
             quantity = usdt - n
-            if quantity < minimum:
+            if quantity < 10.0:
                 continue
             quantity = '{:.8f}'.format(quantity)
             try:

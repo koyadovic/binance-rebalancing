@@ -24,7 +24,8 @@ def main():
 
     total_balance = float(client.get_asset_balance(asset='USDT')['free'])
     for crypto, proportion in settings.portfolio_setting.items():
-        balance = float(client.get_asset_balance(asset=crypto)['free'])  # + float(client.get_asset_balance(asset=crypto)['locked'])
+        # + float(client.get_asset_balance(asset=crypto)['locked'])
+        balance = float(client.get_asset_balance(asset=crypto)['free'])
         avg_price = float(client.get_avg_price(symbol=f'{crypto}USDT')['price'])
         total_balance += (balance * avg_price)
         compiled_data[crypto] = {
