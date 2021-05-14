@@ -1,25 +1,9 @@
 from texttable import Texttable
-
-from decorators import execution_with_attempts
 from binance import Client
 import settings
 import sys
 
-
-@execution_with_attempts(attempts=3, wait_seconds=5)
-def place_buy_order(client, crypto, quantity):
-    client.order_market_buy(
-        symbol=f'{crypto}USDT',
-        quoteOrderQty=quantity  # in usdt
-    )
-
-
-@execution_with_attempts(attempts=3, wait_seconds=5)
-def place_sell_order(client, crypto, quantity):
-    client.order_market_sell(
-        symbol=f'{crypto}USDT',
-        quoteOrderQty=quantity  # in usdt
-    )
+from tools import place_buy_order, place_sell_order
 
 
 def main():
@@ -47,7 +31,6 @@ def main():
             'balance': balance,
             'avg_price': avg_price,
             'usdt': balance * avg_price,
-            'min_quantity': float(client.get_symbol_info(f'{crypto}USDT')['filters'][2]['minQty'])
         }
 
     rebalance = {}
@@ -96,18 +79,14 @@ def main():
         diff = data['diff']
         if diff < 0:
             continue
-        minimum = compiled_data[crypto]['min_quantity']
         quantity = abs(diff) - 5.0
-        if quantity < minimum:
+        if quantity < 10.0:
             continue
         quantity = '{:.8f}'.format(quantity)
         try:
             print(f'> Selling USDT {quantity} of {crypto}')
             required_amount_sold += abs(diff) - 5.0
-
-            # TODO uncomment this
             # place_sell_order(client, crypto, quantity)
-
             real_amount_sold += abs(diff) - 5.0
         except Exception as e:
             print(f'! Warning, error selling {crypto}: {e}')
@@ -124,18 +103,15 @@ def main():
         diff = data['diff']
         if diff > 0:
             continue
-        minimum = compiled_data[crypto]['min_quantity']
         for n in range(0, 50, 5):
             quantity = (abs(diff) - n) * amount_sold_factor
-            if quantity < minimum:
-                continue
+            if quantity < 10.:
+                break
             quantity = '{:.8f}'.format(quantity)
             try:
                 print(f'> Buying USDT {quantity} of {crypto}')
 
-                # TODO uncomment this
                 # place_buy_order(client, crypto, quantity)
-
                 break
             except Exception as e:
                 print(f'! Warning, error buying {crypto}: {e}')
