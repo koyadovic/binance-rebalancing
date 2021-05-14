@@ -22,7 +22,9 @@ def main():
 
     compiled_data = {}
 
-    total_balance = float(client.get_asset_balance(asset='USDT')['free'])
+    current_usdt_balance = float(client.get_asset_balance(asset='USDT')['free'])
+
+    total_balance = current_usdt_balance
     for crypto, proportion in settings.portfolio_setting.items():
         # + float(client.get_asset_balance(asset=crypto)['locked'])
         balance = float(client.get_asset_balance(asset=crypto)['free'])
@@ -72,8 +74,8 @@ def main():
     if response != 'y':
         sys.exit(0)
 
-    real_amount_sold = 0.0
-    required_amount_sold = 0.0
+    real_amount_sold = current_usdt_balance
+    required_amount_sold = current_usdt_balance
 
     # first sell operations
     for crypto, data in rebalance.items():
@@ -87,7 +89,7 @@ def main():
         try:
             print(f'> Selling USDT {quantity} of {crypto}')
             required_amount_sold += abs(diff) - 5.0
-            # place_sell_order(client, crypto, quantity)
+            place_sell_order(client, crypto, quantity)
             real_amount_sold += abs(diff) - 5.0
         except Exception as e:
             print(f'! Warning, error selling {crypto}: {e}')
@@ -112,7 +114,7 @@ def main():
             try:
                 print(f'> Buying USDT {quantity} of {crypto}')
 
-                # place_buy_order(client, crypto, quantity)
+                place_buy_order(client, crypto, quantity)
                 break
             except Exception as e:
                 print(f'! Warning, error buying {crypto}: {e}')

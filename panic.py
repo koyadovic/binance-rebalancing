@@ -17,7 +17,7 @@ def main():
             quantity = '{:.8f}'.format(quantity)
             try:
                 print(f'> Selling USDT {quantity} of {crypto}')
-                # place_sell_order(client, crypto, quantity)
+                place_sell_order(client, crypto, quantity)
                 break
             except Exception as e:
                 print(f'! Warning, error selling {crypto}: {e}')
