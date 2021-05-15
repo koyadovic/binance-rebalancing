@@ -1,3 +1,4 @@
+import math
 import os
 
 API_KEY = os.environ.get('BINANCE_API_KEY')
@@ -7,16 +8,20 @@ API_SECRET = os.environ.get('BINANCE_API_SECRET')
 """
 Crypto: Percentage
 """
+
+percentage = float(math.floor(100 / 11))
+
+
 portfolio_setting = {
-    'BTC': 9.090909090909092,
-    'ADA': 9.090909090909092,
-    'ETH': 9.090909090909092,
-    'EOS': 9.090909090909092,
-    'VET': 9.090909090909092,
-    'DOT': 9.090909090909092,
-    'SOL': 9.090909090909092,
-    'AAVE': 9.090909090909092,
-    'SNX': 9.090909090909092,
-    'BNB': 9.090909090909092,
-    'NANO': 9.090909090909092
+    'ADA': percentage,
+    'ETH': percentage,
+    'EOS': percentage,
+    'VET': percentage,
+    'DOT': percentage,
+    'SOL': percentage,
+    'AAVE': percentage,
+    'SNX': percentage,
+    'BNB': percentage,
+    'NANO': percentage,
+    'MATIC': percentage,
 }

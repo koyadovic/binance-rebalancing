@@ -14,7 +14,7 @@ def execution_with_attempts(attempts=3, wait_seconds=0):
                     if n >= attempts:
                         raise e
                     else:
-                        traceback.print_exc()
+                        # traceback.print_exc()
                         print(f'WARN: Exception: {str(e)}')
                     time.sleep(wait_seconds)
         return wrapper

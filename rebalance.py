@@ -3,7 +3,26 @@ from binance import Client
 import settings
 import sys
 
+from decorators import execution_with_attempts
 from tools import place_buy_order, place_sell_order
+
+
+@execution_with_attempts(attempts=3, wait_seconds=5)
+def get_compiled_balances(client):
+    compiled_data = {}
+    current_usdt_balance = float(client.get_asset_balance(asset='USDT')['free'])
+    total_balance = current_usdt_balance
+    for crypto, proportion in settings.portfolio_setting.items():
+        # + float(client.get_asset_balance(asset=crypto)['locked'])
+        balance = float(client.get_asset_balance(asset=crypto)['free'])
+        avg_price = float(client.get_avg_price(symbol=f'{crypto}USDT')['price'])
+        total_balance += (balance * avg_price)
+        compiled_data[crypto] = {
+            'balance': balance,
+            'avg_price': avg_price,
+            'usdt': balance * avg_price,
+        }
+    return compiled_data, current_usdt_balance, total_balance
 
 
 def main():
@@ -20,21 +39,7 @@ def main():
 
     client = Client(settings.API_KEY, settings.API_SECRET)
 
-    compiled_data = {}
-
-    current_usdt_balance = float(client.get_asset_balance(asset='USDT')['free'])
-
-    total_balance = current_usdt_balance
-    for crypto, proportion in settings.portfolio_setting.items():
-        # + float(client.get_asset_balance(asset=crypto)['locked'])
-        balance = float(client.get_asset_balance(asset=crypto)['free'])
-        avg_price = float(client.get_avg_price(symbol=f'{crypto}USDT')['price'])
-        total_balance += (balance * avg_price)
-        compiled_data[crypto] = {
-            'balance': balance,
-            'avg_price': avg_price,
-            'usdt': balance * avg_price,
-        }
+    compiled_data, current_usdt_balance, total_balance = get_compiled_balances(client)
 
     rebalance = {}
     for crypto, proportion in settings.portfolio_setting.items():
@@ -53,10 +58,13 @@ def main():
             f'{current_percentage}%',
         ]
 
-        if diff < 0:
-            row.append(f'BUY ${abs(round(diff, 2))}')
+        if abs(diff) < 10.0:
+            row.append(f'NOTHING')
         else:
-            row.append(f'SELL ${abs(round(diff, 2))}')
+            if diff < 0:
+                row.append(f'BUY ${abs(round(diff, 2))}')
+            else:
+                row.append(f'SELL ${abs(round(diff, 2))}')
 
         table_rows.append(row)
         rebalance[crypto] = {
@@ -69,10 +77,15 @@ def main():
     table.add_rows(table_rows)
     print(table.draw() + '\n')
     print(f'TOTAL BALANCE: ${round(total_balance, 2)}')
-    print(f'Proceed with rebalance?')
-    response = input('(y/n) ').lower().strip()
-    if response != 'y':
-        sys.exit(0)
+
+    if len(sys.argv) == 1:
+        print(f'Proceed with rebalance?')
+        response = input('(y/n) ').lower().strip()
+        if response != 'y':
+            sys.exit(0)
+    else:
+        if sys.argv[1] not in ['--yes', '-y']:
+            sys.exit(0)
 
     real_amount_sold = current_usdt_balance
     required_amount_sold = current_usdt_balance
@@ -109,6 +122,8 @@ def main():
         for n in range(0, 50, 5):
             quantity = (abs(diff) - n) * amount_sold_factor
             if quantity < 10.:
+                break
+            if quantity > real_amount_sold:
                 break
             quantity = '{:.8f}'.format(quantity)
             try:
