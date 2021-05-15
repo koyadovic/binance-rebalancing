@@ -9,7 +9,7 @@ API_SECRET = os.environ.get('BINANCE_API_SECRET')
 Crypto: Percentage
 """
 
-percentage = float(math.floor(100 / 11))
+percentage = float(math.floor(100 / 10))
 
 
 portfolio_setting = {
@@ -20,7 +20,6 @@ portfolio_setting = {
     'DOT': percentage,
     'SOL': percentage,
     'AAVE': percentage,
-    'SNX': percentage,
     'BNB': percentage,
     'NANO': percentage,
     'MATIC': percentage,

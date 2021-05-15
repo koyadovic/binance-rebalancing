@@ -41,6 +41,8 @@ def main():
 
     compiled_data, current_usdt_balance, total_balance = get_compiled_balances(client)
 
+    do_something = False
+
     rebalance = {}
     for crypto, proportion in settings.portfolio_setting.items():
         wanted_balance = (settings.portfolio_setting[crypto] / 100) * total_balance
@@ -61,6 +63,7 @@ def main():
         if abs(diff) < 10.0:
             row.append(f'NOTHING')
         else:
+            do_something = True
             if diff < 0:
                 row.append(f'BUY ${abs(round(diff, 2))}')
             else:
@@ -77,6 +80,9 @@ def main():
     table.add_rows(table_rows)
     print(table.draw() + '\n')
     print(f'TOTAL BALANCE: ${round(total_balance, 2)}')
+
+    if not do_something:
+        sys.exit(0)
 
     if len(sys.argv) == 1:
         print(f'Proceed with rebalance?')
@@ -95,15 +101,15 @@ def main():
         diff = data['diff']
         if diff < 0:
             continue
-        quantity = abs(diff) - 5.0
+        quantity = abs(diff)
         if quantity < 10.0:
             continue
         quantity = '{:.8f}'.format(quantity)
         try:
             print(f'> Selling USDT {quantity} of {crypto}')
-            required_amount_sold += abs(diff) - 5.0
+            required_amount_sold += abs(diff)
             place_sell_order(client, crypto, quantity)
-            real_amount_sold += abs(diff) - 5.0
+            real_amount_sold += abs(diff)
         except Exception as e:
             print(f'! Warning, error selling {crypto}: {e}')
             continue
@@ -124,7 +130,7 @@ def main():
             if quantity < 10.:
                 break
             if quantity > real_amount_sold:
-                break
+                quantity = real_amount_sold
             quantity = '{:.8f}'.format(quantity)
             try:
                 print(f'> Buying USDT {quantity} of {crypto}')
