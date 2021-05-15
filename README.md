@@ -14,7 +14,6 @@ Each execution, will retrieve what are their balances and will ask you if want t
 
 ```
 $ python rebalance.py 
-TOTAL BALANCE: $928.96
 +--------+---------------+----------+---------------+-----------+--------------+
 | Symbol | Wanted amount | Wanted % |    Current    | Current % |    Action    |
 |        |               |          |    amount     |           |              |
@@ -23,7 +22,15 @@ TOTAL BALANCE: $928.96
 +--------+---------------+----------+---------------+-----------+--------------+
 |  ETH   |    $464.48    |   50%    |    $928.96    |  100.0%   | SELL $464.48 |
 +--------+---------------+----------+---------------+-----------+--------------+
+TOTAL BALANCE: $928.96
 
 Proceed with rebalance?
 (y/n) 
+```
+
+For a periodic rebalance you can use crontab with `bin/rebalance.sh` bash script. Create `.environment` file with the following content:
+
+```
+export BINANCE_API_KEY=<api_key>
+export BINANCE_API_SECRET=<api_secret>
 ```
