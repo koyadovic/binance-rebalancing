@@ -29,7 +29,7 @@ def main():
     table = Texttable()
     table.set_cols_align(["c", "c", "c", "c", "c", "c"])
     table_rows = [[
-        'Symbol',
+        'Asset',
         'Wanted amount',
         'Wanted %',
         'Current amount',
