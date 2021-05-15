@@ -34,3 +34,5 @@ For a periodic rebalance you can use crontab with `bin/rebalance.sh` bash script
 export BINANCE_API_KEY=<api_key>
 export BINANCE_API_SECRET=<api_secret>
 ```
+
+Then execute it. It will not ask for user confirmation, simply will rebalance all your portfolio with the configuration specified into `settings.py`.
