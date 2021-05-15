@@ -10,19 +10,19 @@ from tools import place_buy_order, place_sell_order
 @execution_with_attempts(attempts=3, wait_seconds=5)
 def get_compiled_balances(client):
     compiled_data = {}
-    current_usdt_balance = float(client.get_asset_balance(asset='USDT')['free'])
-    total_balance = current_usdt_balance
+    current_fiat_balance = float(client.get_asset_balance(asset=settings.fiat_asset)['free'])
+    total_balance = current_fiat_balance
     for crypto, proportion in settings.portfolio_setting.items():
         # + float(client.get_asset_balance(asset=crypto)['locked'])
         balance = float(client.get_asset_balance(asset=crypto)['free'])
-        avg_price = float(client.get_avg_price(symbol=f'{crypto}USDT')['price'])
+        avg_price = float(client.get_avg_price(symbol=f'{crypto}{settings.fiat_asset}')['price'])
         total_balance += (balance * avg_price)
         compiled_data[crypto] = {
             'balance': balance,
             'avg_price': avg_price,
-            'usdt': balance * avg_price,
+            'fiat': balance * avg_price,
         }
-    return compiled_data, current_usdt_balance, total_balance
+    return compiled_data, current_fiat_balance, total_balance
 
 
 def main():
@@ -39,24 +39,24 @@ def main():
 
     client = Client(settings.API_KEY, settings.API_SECRET)
 
-    compiled_data, current_usdt_balance, total_balance = get_compiled_balances(client)
+    compiled_data, current_fiat_balance, total_balance = get_compiled_balances(client)
 
     do_something = False
 
     rebalance = {}
     for crypto, proportion in settings.portfolio_setting.items():
         wanted_balance = (settings.portfolio_setting[crypto] / 100) * total_balance
-        current_usdt = compiled_data[crypto]['usdt']
-        diff = current_usdt - wanted_balance
+        current_fiat = compiled_data[crypto]['fiat']
+        diff = current_fiat - wanted_balance
 
-        current_percentage = round((current_usdt / total_balance) * 100, 2)
+        current_percentage = round((current_fiat / total_balance) * 100, 2)
         target_percentage = round(settings.portfolio_setting[crypto], 2)
 
         row = [
             crypto,
-            f'${round(wanted_balance, 2)}',
+            f'{settings.fiat_asset} {round(wanted_balance, 2)}',
             f'{target_percentage}%',
-            f'${round(current_usdt, 2)}',
+            f'{settings.fiat_asset} {round(current_fiat, 2)}',
             f'{current_percentage}%',
         ]
 
@@ -65,21 +65,21 @@ def main():
         else:
             do_something = True
             if diff < 0:
-                row.append(f'BUY ${abs(round(diff, 2))}')
+                row.append(f'BUY {settings.fiat_asset} {abs(round(diff, 2))}')
             else:
-                row.append(f'SELL ${abs(round(diff, 2))}')
+                row.append(f'SELL {settings.fiat_asset} {abs(round(diff, 2))}')
 
         table_rows.append(row)
         rebalance[crypto] = {
-            'wanted_usdt': wanted_balance,
-            'current_usdt': compiled_data[crypto]['usdt'],
+            'wanted_fiat': wanted_balance,
+            'current_fiat': compiled_data[crypto]['fiat'],
             'diff': diff
         }
 
     # Printing summary and asking for rebalancing
     table.add_rows(table_rows)
     print(table.draw() + '\n')
-    print(f'TOTAL BALANCE: ${round(total_balance, 2)}')
+    print(f'TOTAL BALANCE: {settings.fiat_asset} {round(total_balance, 2)}')
 
     if not do_something:
         sys.exit(0)
@@ -93,8 +93,8 @@ def main():
         if sys.argv[1] not in ['--yes', '-y']:
             sys.exit(0)
 
-    real_amount_sold = current_usdt_balance
-    required_amount_sold = current_usdt_balance
+    real_amount_sold = current_fiat_balance
+    required_amount_sold = current_fiat_balance
 
     # first sell operations
     for crypto, data in rebalance.items():
@@ -106,7 +106,7 @@ def main():
             continue
         quantity = '{:.8f}'.format(quantity)
         try:
-            print(f'> Selling USDT {quantity} of {crypto}')
+            print(f'> Selling {settings.fiat_asset} {quantity} of {crypto}')
             required_amount_sold += abs(diff)
             place_sell_order(client, crypto, quantity)
             real_amount_sold += abs(diff)
@@ -133,7 +133,7 @@ def main():
                 quantity = real_amount_sold
             quantity = '{:.8f}'.format(quantity)
             try:
-                print(f'> Buying USDT {quantity} of {crypto}')
+                print(f'> Buying {settings.fiat_asset} {quantity} of {crypto}')
 
                 place_buy_order(client, crypto, quantity)
                 break

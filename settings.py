@@ -11,6 +11,8 @@ Crypto: Percentage
 
 percentage = float(math.floor(100 / 10))
 
+fiat_asset = 'USDT'
+
 
 portfolio_setting = {
     'ADA': percentage,
