@@ -127,10 +127,10 @@ def main():
             continue
         for n in range(0, 50, 5):
             quantity = (abs(diff) - n) * amount_sold_factor
-            if quantity < 10.:
-                break
             if quantity > real_amount_sold:
                 quantity = real_amount_sold
+            if quantity < 10.:
+                break
             quantity = '{:.8f}'.format(quantity)
             try:
                 print(f'> Buying {settings.fiat_asset} {quantity} of {crypto}')
