@@ -121,7 +121,9 @@ def main():
     amount_sold_factor = real_amount_sold / required_amount_sold
 
     # second buy operations
-    for crypto, data in rebalance.items():
+    sorted_cryptos = sorted([k for k in rebalance.keys()], key=lambda key: rebalance[key]['diff'])
+    for crypto in sorted_cryptos:
+        data = rebalance[crypto]
         diff = data['diff']
         if diff > 0:
             continue
