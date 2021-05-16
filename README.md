@@ -36,3 +36,12 @@ export BINANCE_API_SECRET=<api_secret>
 ```
 
 Then execute it. It will not ask for user confirmation, simply will rebalance all your portfolio with the configuration specified into `settings.py`.
+
+# Crontab
+
+Use something like this:
+
+```
+# m h  dom mon dow   command
+0 * * * * /bin/bash <path_to_cloned_project>/bin/rebalance.sh
+```
