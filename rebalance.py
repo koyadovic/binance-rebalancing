@@ -45,6 +45,7 @@ def main():
 
     client = Client(settings.API_KEY, settings.API_SECRET)
 
+    print('Retrieving all balances ...')
     compiled_data, current_fiat_balance, total_balance = get_compiled_balances(client)
 
     do_something = False

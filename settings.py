@@ -15,7 +15,7 @@ fiat_asset = 'USDT'
 Crypto: Percentage
 """
 
-percentage = float(math.floor(100 / 10)) - 0.3  # leaving a tiny piece of fiat untouched, a 3%
+percentage = float(math.floor(100 / 10)) - 0.1  # leaving a tiny piece of fiat untouched, a 1%
 
 portfolio_setting = {
     'ADA': percentage,
