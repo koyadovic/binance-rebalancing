@@ -24,7 +24,14 @@ def get_compiled_balances(client):
     return compiled_data, current_fiat_balance, total_balance
 
 
+def _check_settings():
+    total_portfolio_percentage = sum(settings.portfolio_setting.values())
+    assert total_portfolio_percentage <= 100, f'Total portfolio is greater than 100% -> {total_portfolio_percentage}'
+
+
 def main():
+    _check_settings()
+
     table = Texttable()
     table.set_cols_align(["c", "c", "c", "c", "c", "c"])
     table_rows = [[
