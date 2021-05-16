@@ -6,13 +6,16 @@ API_SECRET = os.environ.get('BINANCE_API_SECRET')
 
 
 """
+Fiat asset selected. Use BUSD, USDT, and so on
+"""
+
+fiat_asset = 'USDT'
+
+"""
 Crypto: Percentage
 """
 
 percentage = float(math.floor(100 / 10)) - 0.3  # leaving a tiny piece of fiat untouched, a 3%
-
-fiat_asset = 'USDT'
-
 
 portfolio_setting = {
     'ADA': percentage,
