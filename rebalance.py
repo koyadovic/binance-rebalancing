@@ -13,7 +13,6 @@ def get_compiled_balances(client):
     current_fiat_balance = float(client.get_asset_balance(asset=settings.fiat_asset)['free'])
     total_balance = current_fiat_balance
     for crypto, proportion in settings.portfolio_setting.items():
-        # + float(client.get_asset_balance(asset=crypto)['locked'])
         balance = float(client.get_asset_balance(asset=crypto)['free'])
         avg_price = float(client.get_avg_price(symbol=f'{crypto}{settings.fiat_asset}')['price'])
         total_balance += (balance * avg_price)

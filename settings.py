@@ -9,7 +9,7 @@ API_SECRET = os.environ.get('BINANCE_API_SECRET')
 Crypto: Percentage
 """
 
-percentage = float(math.floor(100 / 10))
+percentage = float(math.floor(100 / 10)) - 0.3  # leaving a tinny piece of fiat untouched, a 3%
 
 fiat_asset = 'USDT'
 
