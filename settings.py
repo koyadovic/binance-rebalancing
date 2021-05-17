@@ -15,21 +15,23 @@ fiat_asset = 'USDT'
 Crypto: Percentage
 """
 
-percentage = float(math.floor(100 / 14)) - 0.05  # leaving a tiny piece of fiat untouched
+percentage = float(math.floor(100 / 10)) - 0.1  # leaving a tiny piece of fiat untouched
+
+exposure = 1.0  # max 1.0, min 0.0
 
 portfolio_setting = {
-    'ADA': percentage,
-    'ETH': percentage,
-    'EOS': percentage,
-    'VET': percentage,
-    'DOT': percentage,
-    'SOL': percentage,
-    'AAVE': percentage,
-    'BNB': percentage,
-    'NANO': percentage,
-    'MATIC': percentage,
-    'UNI': percentage,
-    'XLM': percentage,
-    'LINK': percentage,
-    'ATOM': percentage,
+    'ADA': percentage * exposure,
+    'ETH': percentage * exposure,
+    'EOS': percentage * exposure,
+    'VET': percentage * exposure,
+    'DOT': percentage * exposure,
+    'SOL': percentage * exposure,
+    'AAVE': percentage * exposure,
+    'BNB': percentage * exposure,
+    'NANO': percentage * exposure,
+    'MATIC': percentage * exposure,
+    # 'UNI': percentage * exposure,
+    # 'XLM': percentage * exposure,
+    # 'LINK': percentage * exposure,
+    # 'ATOM': percentage * exposure,
 }
