@@ -4,7 +4,7 @@ import settings
 import sys
 
 from decorators import execution_with_attempts
-from tools import place_buy_order, place_sell_order
+from tools import place_fiat_buy_order, place_fiat_sell_order
 
 
 @execution_with_attempts(attempts=3, wait_seconds=5)
@@ -115,7 +115,7 @@ def main():
         try:
             print(f'> Selling {settings.fiat_asset} {quantity} of {crypto}')
             required_amount_sold += abs(diff)
-            place_sell_order(client, crypto, quantity)
+            place_fiat_sell_order(client, crypto, quantity)
             real_amount_sold += abs(diff)
         except Exception as e:
             print(f'! Warning, error selling {crypto}: {e}')
@@ -144,7 +144,7 @@ def main():
             try:
                 print(f'> Buying {settings.fiat_asset} {quantity} of {crypto}')
 
-                place_buy_order(client, crypto, quantity)
+                place_fiat_buy_order(client, crypto, quantity)
                 break
             except Exception as e:
                 print(f'! Warning, error buying {crypto}: {e}')
