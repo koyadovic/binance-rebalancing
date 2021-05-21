@@ -11,5 +11,5 @@ source ~/.bashrc
 source .environment
 
 # execute it
-python rebalance.py --yes &> /tmp/rebalance.output
-date >> /tmp/rebalance.output
+python panic.py &> /tmp/panic.output
+date >> /tmp/panic.output
