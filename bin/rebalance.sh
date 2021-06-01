@@ -23,5 +23,5 @@ if test -f env/bin/activate; then
 fi
 
 # execute it
-python rebalance.py --yes &> /tmp/rebalance.output
-date >> /tmp/rebalance.output
+python rebalance.py --yes &> rebalance.output
+date >> rebalance.output

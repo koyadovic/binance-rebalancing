@@ -11,6 +11,7 @@ Crypto: Percentage
 percentage = float(math.floor(100 / 10))
 
 # leaving a tiny piece of fiat untouched
+exposure = 0.5
 exposure = 0.99  # Recommended max 0.99, min 0.01
 
 portfolio_setting = {
@@ -34,6 +35,7 @@ portfolio_setting = {
 # Percentage of deviation to rebalance. Set to None if want to disable it
 # for 1.0 value if asset has 10%, causes rebalancing if it takes >=11% or <=9%
 minimum_percentage_deviation = 1.0 * exposure
+minimum_percentage_deviation = None
 
 
 """
