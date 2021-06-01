@@ -10,14 +10,16 @@ Fiat asset selected. Use BUSD, USDT, and so on
 """
 
 fiat_asset = 'BUSD'
+fiat_decimals = 2
 
 """
 Crypto: Percentage
 """
 
-percentage = float(math.floor(100 / 10)) - 0.1  # leaving a tiny piece of fiat untouched
+percentage = float(math.floor(100 / 10))
 
-exposure = 1.0  # max 1.0, min 0.0
+# leaving a tiny piece of fiat untouched
+exposure = 0.99  # Recommended max 0.99, min 0.01
 
 portfolio_setting = {
     'ADA': percentage * exposure,
@@ -31,6 +33,11 @@ portfolio_setting = {
     'NANO': percentage * exposure,
     'MATIC': percentage * exposure,
     # 'XLM': percentage * exposure,
+    # 'EOS': percentage * exposure,
     # 'LINK': percentage * exposure,
     # 'ATOM': percentage * exposure,
 }
+
+
+# Percentage of deviation to rebalance. Set to None if want to disable it
+minimum_percentage_deviation = 1.0  # for 1.0 value if asset has 10%, causes rebalancing if it takes >=11% or <=9%

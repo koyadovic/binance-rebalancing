@@ -58,35 +58,39 @@ def main():
 
         current_percentage = round((current_fiat / total_balance) * 100, 2)
         target_percentage = round(settings.portfolio_setting[crypto], 2)
+        diff_percentage = current_percentage - target_percentage
 
         row = [
             crypto,
-            f'{settings.fiat_asset} {round(wanted_balance, 2)}',
+            f'{settings.fiat_asset} {round(wanted_balance, settings.fiat_decimals)}',
             f'{target_percentage}%',
-            f'{settings.fiat_asset} {round(current_fiat, 2)}',
+            f'{settings.fiat_asset} {round(current_fiat, settings.fiat_decimals)}',
             f'{current_percentage}%',
         ]
 
         if abs(diff) < 10.0:
             row.append(f'NOTHING')
+        elif settings.minimum_percentage_deviation is not None and abs(diff_percentage) < settings.minimum_percentage_deviation:
+            row.append(f'NOTHING')
         else:
             do_something = True
             if diff < 0:
-                row.append(f'BUY {settings.fiat_asset} {abs(round(diff, 2))}')
+                row.append(f'BUY {settings.fiat_asset} {abs(round(diff, settings.fiat_decimals))}')
             else:
-                row.append(f'SELL {settings.fiat_asset} {abs(round(diff, 2))}')
+                row.append(f'SELL {settings.fiat_asset} {abs(round(diff, settings.fiat_decimals))}')
 
         table_rows.append(row)
         rebalance[crypto] = {
             'wanted_fiat': wanted_balance,
             'current_fiat': compiled_data[crypto]['fiat'],
-            'diff': diff
+            'diff': diff,
+            'diff_percentage': diff_percentage,
         }
 
     # Printing summary and asking for rebalancing
     table.add_rows(table_rows)
     print(table.draw() + '\n')
-    print(f'TOTAL BALANCE: {settings.fiat_asset} {round(total_balance, 2)}')
+    print(f'TOTAL BALANCE: {settings.fiat_asset} {round(total_balance, settings.fiat_decimals)}')
 
     if not do_something:
         sys.exit(0)
@@ -106,10 +110,13 @@ def main():
     # first sell operations
     for crypto, data in rebalance.items():
         diff = data['diff']
+        diff_percentage = data['diff_percentage']
         if diff < 0:
             continue
         quantity = abs(diff)
         if quantity < 10.0:
+            continue
+        if settings.minimum_percentage_deviation is not None and abs(diff_percentage) < settings.minimum_percentage_deviation:
             continue
         quantity = '{:.8f}'.format(quantity)
         try:
@@ -132,13 +139,16 @@ def main():
     for crypto in sorted_cryptos:
         data = rebalance[crypto]
         diff = data['diff']
+        diff_percentage = data['diff_percentage']
         if diff > 0:
             continue
         for n in range(0, 50, 5):
             quantity = (abs(diff) - n) * amount_sold_factor
             if quantity > real_amount_sold:
                 quantity = real_amount_sold
-            if quantity < 10.:
+            if quantity < 10.0:
+                break
+            if settings.minimum_percentage_deviation is not None and abs(diff_percentage) < settings.minimum_percentage_deviation:
                 break
             quantity = '{:.8f}'.format(quantity)
             try:
