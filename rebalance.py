@@ -68,15 +68,19 @@ def main():
             f'{current_percentage}%',
         ]
 
-        if abs(diff) < 10.0:
+        if abs(diff) <= 5.0:
             row.append(f'NOTHING')
         elif settings.minimum_percentage_deviation is not None and abs(diff_percentage) < settings.minimum_percentage_deviation:
             row.append(f'NOTHING')
         else:
             do_something = True
             if diff < 0:
+                if -10.0 < diff < -5.0:
+                    diff = -10.0
                 row.append(f'BUY {settings.fiat_asset} {abs(round(diff, settings.fiat_decimals))}')
             else:
+                if 10.0 > diff > 5.0:
+                    diff = 10.0
                 row.append(f'SELL {settings.fiat_asset} {abs(round(diff, settings.fiat_decimals))}')
 
         table_rows.append(row)
