@@ -8,7 +8,7 @@ API_SECRET = os.environ.get('BINANCE_API_SECRET')
 Crypto: Percentage
 """
 
-percentage = float(math.floor(100 / 3))
+percentage = 100 / 3
 
 # leaving a tiny piece of fiat untouched
 exposure = 0.5
