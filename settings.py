@@ -1,4 +1,3 @@
-import math
 import os
 
 API_KEY = os.environ.get('BINANCE_API_KEY')
@@ -13,10 +12,10 @@ fiat_asset = 'BUSD'
 fiat_decimals = 2
 
 """
-Crypto: Percentage
+Crypto assets
 """
 
-assets = [
+crypto_assets = [
     'BTC',
     'ETH',
     'BNB',
@@ -40,8 +39,8 @@ assets = [
 exposure = 0.5
 
 # automatically compute percentage for the number of assets selected, and use exposure to modify it.
-percentage = 100 / len(assets)
-portfolio_setting = {asset: percentage * exposure for asset in assets}
+percentage = 100.0 / len(crypto_assets)
+portfolio_setting = {asset: percentage * exposure for asset in crypto_assets}
 
 
 # Percentage of deviation to rebalance. Set to None if want to disable it
