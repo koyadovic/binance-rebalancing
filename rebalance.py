@@ -6,7 +6,7 @@ from core.domain.interfaces import AbstractExchange, AbstractUserInterface
 from core.infrastructure.exchange_binance import BinanceExchange
 from core.infrastructure.user_interface_text import TextUserInterface
 
-from core.domain.services import PortfolioRebalancing
+from core.domain import services as rebalancing_services
 
 
 def main():
@@ -19,8 +19,7 @@ def main():
     )
     dependency_dispatcher.register_implementation(AbstractUserInterface, TextUserInterface())
 
-    portfolio_rebalancing = PortfolioRebalancing()
-    portfolio_rebalancing.rebalance(
+    rebalancing_services.rebalance(
         crypto_assets=settings.crypto_assets,
         fiat_asset=settings.fiat_asset,
         fiat_decimals=settings.fiat_decimals,
