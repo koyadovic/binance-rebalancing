@@ -1,3 +1,5 @@
+from core.domain.distribution import Distribution, EqualDistribution
+
 """
 Fiat asset selected. Use BUSD, USDT, and so on
 """
@@ -49,3 +51,6 @@ This will keep for every execution:
 - 25% in ETH 
 """
 exposure = 0.995
+
+# the other possibility is CustomDistribution
+distribution: Distribution = EqualDistribution(crypto_assets=crypto_assets)

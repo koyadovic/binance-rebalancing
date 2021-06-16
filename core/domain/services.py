@@ -2,13 +2,15 @@ from datetime import datetime
 
 import pytz
 
+from core.domain.distribution import Distribution
 from core.domain.interfaces import AbstractExchange, AbstractUserInterface
 from shared.domain.dependencies import dependency_dispatcher
 from shared.domain.event_dispatcher import event_dispatcher
 
 
 def rebalance(crypto_assets: list = None, fiat_asset: str = None,
-              fiat_decimals: str = None, exposure: float = None, with_confirmation=True, now=None):
+              fiat_decimals: str = None, exposure: float = None, with_confirmation=True,
+              now=None, distribution: Distribution = None):
 
     now = now or datetime.utcnow().replace(tzinfo=pytz.utc)
 
@@ -19,7 +21,7 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     compiled_data, current_fiat_balance, total_balance = _get_compiled_balances(crypto_assets, fiat_asset)
     summary, rebalance, do_something = _compute_summary_and_rebalancing(crypto_assets, exposure, fiat_asset,
                                                                         fiat_decimals, compiled_data,
-                                                                        total_balance)
+                                                                        total_balance, distribution)
     # show summary to user
     total_balance_str = f'{fiat_asset} {round(total_balance, fiat_decimals)}'
     user_interface.show_rebalance_summary(summary, total_balance_str)
@@ -114,14 +116,15 @@ def _get_compiled_balances(crypto_assets, fiat_asset):
     return compiled_data, current_fiat_balance, total_balance
 
 
-def _compute_summary_and_rebalancing(crypto_assets, exposure, fiat_asset, fiat_decimals, compiled_data, total_balance):
+def _compute_summary_and_rebalancing(crypto_assets, exposure, fiat_asset, fiat_decimals, compiled_data, total_balance,
+                                     distribution):
     do_something = False
 
     # equally distributed percentages between crypto assets
-    percentage = (100.0 / len(crypto_assets)) * exposure
     summary = []
     rebalance = {}
     for crypto_asset in crypto_assets:
+        percentage = distribution.assign_percentage(crypto_asset) * exposure
         wanted_fiat_balance = (percentage / 100) * total_balance
         current_fiat = compiled_data[crypto_asset]['fiat']
         diff = current_fiat - wanted_fiat_balance

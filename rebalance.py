@@ -18,6 +18,7 @@ def main():
         fiat_decimals=settings.fiat_decimals,
         exposure=settings.exposure,
         with_confirmation=len(sys.argv) == 1 or sys.argv[1].lower().strip() not in ['--yes', '-y'],
+        distribution=settings.distribution
     )
 
 
