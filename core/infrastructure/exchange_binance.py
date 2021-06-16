@@ -28,17 +28,15 @@ class BinanceExchange(AbstractExchange):
     @execution_with_attempts(attempts=3, wait_seconds=5)
     def place_fiat_buy_order(self, crypto: str, quantity: float, fiat_asset: str):
         quantity = '{:.8f}'.format(quantity)
-        print(f'BUY {crypto} -> {fiat_asset} {quantity}')
-        # self.client.order_market_buy(
-        #     symbol=f'{crypto}{fiat_asset}',
-        #     quoteOrderQty=quantity
-        # )
+        self.client.order_market_buy(
+            symbol=f'{crypto}{fiat_asset}',
+            quoteOrderQty=quantity
+        )
 
     @execution_with_attempts(attempts=3, wait_seconds=5)
     def place_fiat_sell_order(self, crypto: str, quantity: float, fiat_asset: str):
         quantity = '{:.8f}'.format(quantity)
-        print(f'SELL {crypto} -> {fiat_asset} {quantity}')
-        # self.client.order_market_sell(
-        #     symbol=f'{crypto}{fiat_asset}',
-        #     quoteOrderQty=quantity
-        # )
+        self.client.order_market_sell(
+            symbol=f'{crypto}{fiat_asset}',
+            quoteOrderQty=quantity
+        )
