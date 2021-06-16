@@ -1,62 +1,27 @@
+from datetime import datetime
+
+import pytz
+
 from core.domain.interfaces import AbstractExchange, AbstractUserInterface
 from shared.domain.dependencies import dependency_dispatcher
+from shared.domain.event_dispatcher import event_dispatcher
 
 
 class PortfolioRebalancing:
 
     def rebalance(self, crypto_assets: list = None, fiat_asset: str = None,
-                  fiat_decimals: str = None, exposure: float = None, with_confirmation=True):
+                  fiat_decimals: str = None, exposure: float = None, with_confirmation=True, now=None):
+
+        now = now or datetime.utcnow().replace(tzinfo=pytz.utc)
 
         # dependencies
         user_interface: AbstractUserInterface = dependency_dispatcher.request_implementation(AbstractUserInterface)
         exchange: AbstractExchange = dependency_dispatcher.request_implementation(AbstractExchange)
 
         compiled_data, current_fiat_balance, total_balance = self.get_compiled_balances(crypto_assets, fiat_asset)
-        do_something = False
-
-        # equally distributed percentages between crypto assets
-        percentage = (100.0 / len(crypto_assets)) * exposure
-
-        summary = []
-
-        rebalance = {}
-        for crypto in crypto_assets:
-            wanted_balance = (percentage / 100) * total_balance
-            current_fiat = compiled_data[crypto]['fiat']
-            diff = current_fiat - wanted_balance
-
-            current_percentage = round((current_fiat / total_balance) * 100, 2)
-            target_percentage = round(percentage, 2)
-            diff_percentage = current_percentage - target_percentage
-
-            row = [
-                crypto,
-                f'{fiat_asset} {round(wanted_balance, fiat_decimals)}',
-                f'{target_percentage}%',
-                f'{fiat_asset} {round(current_fiat, fiat_decimals)}',
-                f'{current_percentage}%',
-            ]
-
-            if abs(diff) <= 5.0:
-                row.append(f'NOTHING')
-            else:
-                do_something = True
-                if diff < 0:
-                    if -10.0 < diff < -5.0:
-                        diff = -10.0
-                    row.append(f'BUY {fiat_asset} {abs(round(diff, fiat_decimals))}')
-                else:
-                    if 10.0 > diff > 5.0:
-                        diff = 10.0
-                    row.append(f'SELL {fiat_asset} {abs(round(diff, fiat_decimals))}')
-            summary.append(row)
-            rebalance[crypto] = {
-                'wanted_fiat': wanted_balance,
-                'current_fiat': compiled_data[crypto]['fiat'],
-                'diff': diff,
-                'diff_percentage': diff_percentage,
-            }
-
+        summary, rebalance, do_something = self.compute_summary_and_rebalancing(crypto_assets, exposure, fiat_asset,
+                                                                                fiat_decimals, compiled_data,
+                                                                                total_balance)
         # show summary to user
         total_balance_str = f'{fiat_asset} {round(total_balance, fiat_decimals)}'
         user_interface.show_rebalance_summary(summary, total_balance_str)
@@ -75,7 +40,7 @@ class PortfolioRebalancing:
         required_amount_sold = current_fiat_balance
 
         # first sell operations
-        for crypto, data in rebalance.items():
+        for crypto_asset, data in rebalance.items():
             diff = data['diff']
             if diff < 0:
                 continue
@@ -83,12 +48,12 @@ class PortfolioRebalancing:
             if quantity < 10.0:
                 continue
             try:
-                user_interface.show_message(f'> Selling {fiat_asset} {quantity} of {crypto}')
+                user_interface.show_message(f'> Selling {fiat_asset} {quantity} of {crypto_asset}')
                 required_amount_sold += abs(diff)
-                exchange.place_fiat_sell_order(crypto, quantity, fiat_asset)
+                exchange.place_fiat_sell_order(crypto_asset, quantity, fiat_asset)
                 real_amount_sold += abs(diff)
             except Exception as e:
-                user_interface.show_message(f'! Warning, error selling {crypto}: {e}')
+                user_interface.show_message(f'! Warning, error selling {crypto_asset}: {e}')
                 continue
 
         if real_amount_sold == 0.0:
@@ -99,8 +64,8 @@ class PortfolioRebalancing:
 
         # second buy operations
         sorted_cryptos = sorted([k for k in rebalance.keys()], key=lambda key: rebalance[key]['diff'])
-        for crypto in sorted_cryptos:
-            data = rebalance[crypto]
+        for crypto_asset in sorted_cryptos:
+            data = rebalance[crypto_asset]
             diff = data['diff']
             if diff > 0:
                 continue
@@ -111,12 +76,25 @@ class PortfolioRebalancing:
                 if quantity < 10.0:
                     break
                 try:
-                    user_interface.show_message(f'> Buying {fiat_asset} {quantity} of {crypto}')
-                    exchange.place_fiat_buy_order(crypto, quantity, fiat_asset)
+                    user_interface.show_message(f'> Buying {fiat_asset} {quantity} of {crypto_asset}')
+                    exchange.place_fiat_buy_order(crypto_asset, quantity, fiat_asset)
                     break
                 except Exception as e:
-                    user_interface.show_message(f'! Warning, error buying {crypto}: {e}')
+                    user_interface.show_message(f'! Warning, error buying {crypto_asset}: {e}')
                     continue
+
+        # post operation get result
+        compiled_data, current_fiat_balance, total_balance = self.get_compiled_balances(crypto_assets, fiat_asset)
+        for crypto_asset in crypto_assets:
+            event_dispatcher.emit('crypto-asset-balance', **{
+                'now': now,
+                'crypto_asset': crypto_asset,
+                'balance': compiled_data[crypto_asset]['balance'],
+            })
+        event_dispatcher.emit('total_balance', **{
+            'now': now,
+            'total_balance': total_balance,
+        })
 
     @staticmethod
     def get_compiled_balances(crypto_assets, fiat_asset):
@@ -125,13 +103,60 @@ class PortfolioRebalancing:
         compiled_data = {}
         current_fiat_balance = exchange.get_asset_balance(asset=fiat_asset)
         total_balance = current_fiat_balance
-        for crypto in crypto_assets:
-            balance = exchange.get_asset_balance(asset=crypto)
-            avg_price = exchange.get_avg_fiat_price(asset=crypto, fiat_asset=fiat_asset)
+        for crypto_asset in crypto_assets:
+            balance = exchange.get_asset_balance(asset=crypto_asset)
+            avg_price = exchange.get_asset_fiat_price(asset=crypto_asset, fiat_asset=fiat_asset)
             total_balance += balance * avg_price
-            compiled_data[crypto] = {
+            compiled_data[crypto_asset] = {
                 'balance': balance,
                 'avg_price': avg_price,
                 'fiat': balance * avg_price,
             }
         return compiled_data, current_fiat_balance, total_balance
+
+    @staticmethod
+    def compute_summary_and_rebalancing(crypto_assets, exposure, fiat_asset, fiat_decimals, compiled_data, total_balance):
+        do_something = False
+
+        # equally distributed percentages between crypto assets
+        percentage = (100.0 / len(crypto_assets)) * exposure
+        summary = []
+        rebalance = {}
+        for crypto_asset in crypto_assets:
+            wanted_fiat_balance = (percentage / 100) * total_balance
+            current_fiat = compiled_data[crypto_asset]['fiat']
+            diff = current_fiat - wanted_fiat_balance
+
+            current_percentage = round((current_fiat / total_balance) * 100, 2)
+            target_percentage = round(percentage, 2)
+            diff_percentage = current_percentage - target_percentage
+
+            row = [
+                crypto_asset,
+                f'{fiat_asset} {round(wanted_fiat_balance, fiat_decimals)}',
+                f'{target_percentage}%',
+                f'{fiat_asset} {round(current_fiat, fiat_decimals)}',
+                f'{current_percentage}%',
+            ]
+
+            if abs(diff) <= 5.0:
+                row.append(f'NOTHING')
+            else:
+                do_something = True
+                if diff < 0:
+                    if -10.0 < diff < -5.0:
+                        diff = -10.0
+                    row.append(f'BUY {fiat_asset} {abs(round(diff, fiat_decimals))}')
+                else:
+                    if 10.0 > diff > 5.0:
+                        diff = 10.0
+                    row.append(f'SELL {fiat_asset} {abs(round(diff, fiat_decimals))}')
+            summary.append(row)
+            rebalance[crypto_asset] = {
+                'balance': compiled_data[crypto_asset]['balance'],
+                'wanted_fiat': wanted_fiat_balance,
+                'current_fiat': compiled_data[crypto_asset]['fiat'],
+                'diff': diff,
+                'diff_percentage': diff_percentage,
+            }
+        return summary, rebalance, do_something

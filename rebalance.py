@@ -1,11 +1,12 @@
 import settings
 import sys
 
+from shared.domain.dependencies import dependency_dispatcher
 from core.domain.interfaces import AbstractExchange, AbstractUserInterface
-from core.domain.services import PortfolioRebalancing
 from core.infrastructure.exchange_binance import BinanceExchange
 from core.infrastructure.user_interface_text import TextUserInterface
-from shared.domain.dependencies import dependency_dispatcher
+
+from core.domain.services import PortfolioRebalancing
 
 
 def main():
@@ -24,7 +25,7 @@ def main():
         fiat_asset=settings.fiat_asset,
         fiat_decimals=settings.fiat_decimals,
         exposure=settings.exposure,
-        with_confirmation=len(sys.argv) == 1 or sys.argv[1] not in ['--yes', '-y']
+        with_confirmation=len(sys.argv) == 1 or sys.argv[1].lower().strip() not in ['--yes', '-y'],
     )
 
 

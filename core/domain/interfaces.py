@@ -5,7 +5,7 @@ class AbstractExchange:
         # and so on
         raise NotImplementedError
 
-    def get_avg_fiat_price(self, asset: str, fiat_asset: str) -> float:
+    def get_asset_fiat_price(self, asset: str, fiat_asset: str) -> float:
         # if asset is BTC and fiat_asset is USDT, must return the amount of BTC we have expressed as fiat_asset
         raise NotImplementedError
 
