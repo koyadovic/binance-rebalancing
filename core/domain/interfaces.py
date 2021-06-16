@@ -6,7 +6,7 @@ class AbstractExchange:
         raise NotImplementedError
 
     def get_asset_fiat_price(self, asset: str, fiat_asset: str) -> float:
-        # if asset is BTC and fiat_asset is USDT, must return the amount of BTC we have expressed as fiat_asset
+        # if asset is BTC and fiat_asset is USDT, must return the BTC price expressed as USDT
         raise NotImplementedError
 
     def place_fiat_buy_order(self, crypto: str, quantity: float, fiat_asset: str):
