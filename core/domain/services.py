@@ -83,7 +83,7 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
                 user_interface.show_message(f'! Warning, error buying {crypto_asset}: {e}')
                 continue
 
-    # post operation get result
+    # post operation emit events with updated balances
     compiled_data, current_fiat_balance, total_balance = _get_compiled_balances(crypto_assets, fiat_asset)
     for crypto_asset in crypto_assets:
         event_dispatcher.emit('crypto-asset-balance', **{
