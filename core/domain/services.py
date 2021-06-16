@@ -89,8 +89,9 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
             'crypto_asset': crypto_asset,
             'balance': compiled_data[crypto_asset]['balance'],
         })
-    event_dispatcher.emit('total_balance', **{
+    event_dispatcher.emit('total-balance', **{
         'now': now,
+        'fiat_asset': fiat_asset,
         'total_balance': total_balance,
     })
 

@@ -1,16 +1,19 @@
 # Binance Rebalancing
 This is a simple project that rebalance your binance portfolio configured into settings.py file.
 
-Configure your assets as something like this:
+See `settings.py` file for more information.
+
+# Environment variables
+The default binance implementation need the following environment variables to be defined
 
 ```
-portfolio_setting = {
-    'BTC': 50,
-    'ETH': 50,
-}
+export BINANCE_API_KEY=<api_key>
+export BINANCE_API_SECRET=<api_secret>
 ```
 
-Each execution, will retrieve what are their balances and will ask you if want to rebalance to keep the weight of each of your cryptocurrencies to the percentages specified.
+# Execution
+
+Each execution, will retrieve what the crypto balances are and will ask if you want to rebalance to keep the same weight of each of them.
 
 ```
 $ python rebalance.py 

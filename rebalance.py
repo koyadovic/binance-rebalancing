@@ -1,23 +1,16 @@
+from core.bootstrap import init_core_module
+from activity.bootstrap import init_activity_module
+from core.domain import services as rebalancing_services
+
 import settings
 import sys
 
-from shared.domain.dependencies import dependency_dispatcher
-from core.domain.interfaces import AbstractExchange, AbstractUserInterface
-from core.infrastructure.exchange_binance import BinanceExchange
-from core.infrastructure.user_interface_text import TextUserInterface
-
-from core.domain import services as rebalancing_services
-
 
 def main():
-    dependency_dispatcher.register_implementation(
-        AbstractExchange,
-        BinanceExchange(
-            api_key=settings.API_KEY,
-            api_secret=settings.API_SECRET,
-        )
-    )
-    dependency_dispatcher.register_implementation(AbstractUserInterface, TextUserInterface())
+    init_core_module()
+
+    # read activity/README.md
+    init_activity_module()
 
     rebalancing_services.rebalance(
         crypto_assets=settings.crypto_assets,
