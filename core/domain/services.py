@@ -103,12 +103,12 @@ def _get_compiled_balances(crypto_assets, fiat_asset):
     total_balance = current_fiat_balance
     for crypto_asset in crypto_assets:
         balance = exchange.get_asset_balance(asset=crypto_asset)
-        avg_price = exchange.get_asset_fiat_price(asset=crypto_asset, fiat_asset=fiat_asset)
-        total_balance += balance * avg_price
+        fiat_price = exchange.get_asset_fiat_price(asset=crypto_asset, fiat_asset=fiat_asset)
+        total_balance += balance * fiat_price
         compiled_data[crypto_asset] = {
             'balance': balance,
-            'avg_price': avg_price,
-            'fiat': balance * avg_price,
+            'avg_price': fiat_price,
+            'fiat': balance * fiat_price,
         }
     return compiled_data, current_fiat_balance, total_balance
 
