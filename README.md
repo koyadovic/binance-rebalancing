@@ -39,7 +39,7 @@ fiat_decimals = 2
 crypto_assets = ["BTC", "ETH"]
 exposure = 0.5
 
-distribution: Distribution = EqualDistribution(crypto_assets=crypto_assets)  # this see later
+distribution: Distribution = EqualDistribution(crypto_assets=crypto_assets)  # later explained
 ```
 
 This will keep for every execution:
