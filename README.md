@@ -74,7 +74,7 @@ distribution: Distribution = CustomDistribution(
 See `settings.py` file for the initial idea.
 
 # Environment variables
-The default binance implementation need the following environment variables to be defined
+The default exchange implementation is for binance. This implementation need the following environment variables to be defined:
 
 ```bash
 export BINANCE_API_KEY=<api_key>
