@@ -1,77 +1,52 @@
 # Binance Rebalancing
-This is a simple project that rebalance your binance portfolio configured into `settings.py` file.
+This is a simple project that rebalance your binance portfolio configured into `settings.py` file. The current code only accepts Binance but could be easily extended to accept other exchanges as well.
 
-You must set:
+# For users
+Some common configurations that might be needed are exposed.
+
+### Several crypto assets, same percentage for each one
+Edit `settings.py` with something like:
 ```python
-fiat_asset = 'BUSD'  # or USDT, etc
+fiat_asset = 'BUSD'  # or 'USDT'
 fiat_decimals = 2
-```
-
-Then select what are your assets:
-
-```python
 crypto_assets = [
     'BTC',
-    'ETH'
+    'ETH',
+    # add here all your assets
 ]
-```
-
-Set also `exposure` variable:
-```python
 exposure = 0.995
+distribution = EqualDistribution(crypto_assets=crypto_assets)
 ```
+This will keep the two assets in the example, 50% for each one of them. If you add three assets, there will be 33.3% for each one. And so on for four, five .. 
 
-With `exposure` variable you control how much are you exposed. Recommended max 0.995 and min 0.005.
-
-- 0.995 means all of your balance will be used for assets rebalancing.
-
-- 0.005 means nothing of your balance used.
-
-With 0.5 you only expose the half of your balance.
-If every crypto asset goes down, automatic buy will occur.
-If every crypto asset goes up, automatic sell will occur.
-Always keeping the proportions.
-
-### Example:
+### Only BTC but only 50% of my fiat exposed
+Edit `settings.py` with something like:
 ```python
-fiat_asset = 'BUSD'
+fiat_asset = 'BUSD'  # or 'USDT'
 fiat_decimals = 2
-crypto_assets = ["BTC", "ETH"]
+crypto_assets = ['BTC']
 exposure = 0.5
-
-distribution: Distribution = EqualDistribution(crypto_assets=crypto_assets)  # later explained
+distribution = EqualDistribution(crypto_assets=crypto_assets)
 ```
+This will keep 50% of fiat untouched and the other 50% with BTC. You can get with this configuration automatic buys when BTC price goes down, causing fiat percentage to increase and BTC percentage to decrease and viceversa, automatic sells when BTC price goes up, for the inverse reason.
 
-This will keep for every execution:
-- 50% in BUSD
-- 25% in BTC
-- 25% in ETH
-
-### Distributors
-
-### - EqualDistribution
-This distributor will assign the same percentage to each of your assets automatically.
+### I want 50% in BTC, 25% ETH and 25% in ADA
+Edit `settings.py` with something like:
 ```python
-from core.domain.distribution import Distribution, EqualDistribution
-
-distribution: Distribution = EqualDistribution(crypto_assets=crypto_assets)
-```
-
-### - CustomDistribution
-This distributor will assign custom percentages for each asset. You must specify all of them
-```python
-from core.domain.distribution import Distribution, CustomDistribution
-
-distribution: Distribution = CustomDistribution(
+fiat_asset = 'BUSD'  # or 'USDT'
+fiat_decimals = 2
+crypto_assets = ['BTC', 'ETH', 'ADA']
+exposure = 0.995
+distribution = CustomDistribution(
     crypto_assets=crypto_assets,
     percentages={
-        'BTC': 75.0,
-        'ETH': 25.0,
+        'BTC': 50,
+        'ETH': 25,
+        'ADA': 25
     }
 )
 ```
-
-See `settings.py` file for the initial idea.
+With this configuration, on every rebalance will cause the needed buys and sells to keep always 50% on BTC, 25% on ETH and 25% on ADA.
 
 # Environment variables
 The default exchange implementation is for binance. This implementation need the following environment variables to be defined:
@@ -83,7 +58,7 @@ export BINANCE_API_SECRET=<api_secret>
 
 # Execution
 
-Each execution, will retrieve what the crypto balances are and will ask you if you want to rebalance to keep the proportions specified by the `distributor` selected in `settings.py` file.
+Each execution, will retrieve what the crypto balances are and will ask you if you want to rebalance to keep the proportions specified in `settings.py` file.
 
 ```
 $ python rebalance.py 
@@ -118,3 +93,7 @@ Use something like this:
 # m h  dom mon dow   command
 0 * * * * /bin/bash <path_to_cloned_project>/bin/rebalance.sh
 ```
+
+
+# For developers
+TODO
