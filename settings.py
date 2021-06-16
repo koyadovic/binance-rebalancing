@@ -19,5 +19,5 @@ crypto_assets = [
     # 'LINK',
     # 'ATOM',
 ]
-exposure = 0.995
+exposure = 0.995  # max 0.995, min 0.005. Due to volatile nature of prices, a small margin should be left untouched.
 distribution: Distribution = EqualDistribution(crypto_assets=crypto_assets)
