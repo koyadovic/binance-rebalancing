@@ -36,14 +36,4 @@ crypto_assets = [
 # from all of your balance, control how much you are exposed with this setting. max 0.995, min 0.005
 # 0.995 means all of your balance will be used for assets rebalancing
 # 0.005 means nothing of your balance used.
-exposure = 0.5
-
-# automatically compute percentage for the number of assets selected, and use exposure to modify it.
-percentage = 100.0 / len(crypto_assets)
-portfolio_setting = {asset: percentage * exposure for asset in crypto_assets}
-
-
-# Percentage of deviation to rebalance. Set to None if want to disable it
-# for 1.0 value if asset has 10%, causes rebalancing if it takes >=11% or <=9%
-# minimum_percentage_deviation = 1.0 * exposure
-minimum_percentage_deviation = None
+exposure = 0.995
