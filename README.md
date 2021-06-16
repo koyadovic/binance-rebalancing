@@ -29,16 +29,16 @@ distribution = EqualDistribution(crypto_assets=crypto_assets)
 ```
 This will keep the two assets in the example, 50% for each one of them. If you add three assets, there will be 33.3% for each one. And so on for four, five .. 
 
-### Only BTC but only 50% of my fiat exposed
+### Only bitcoin but leaving 50% in fiat money
 Edit `settings.py` with something like:
 ```python
 fiat_asset = 'BUSD'  # or 'USDT'
 fiat_decimals = 2
 crypto_assets = ['BTC']
-exposure = 0.5  # max 0.995, min 0.005. Due to volatile nature of prices, a small margin should be left untouched.
+exposure = 0.5  # Here is where you only expose the 50%
 distribution = EqualDistribution(crypto_assets=crypto_assets)
 ```
-This will keep 50% of fiat untouched and the other 50% with BTC. You can get with this configuration automatic buys when BTC price goes down, causing fiat percentage to increase and BTC percentage to decrease and viceversa, automatic sells when BTC price goes up, for the inverse reason.
+This will keep 50% of fiat and the other 50% with BTC. You can get with this configuration automatic buys when BTC price goes down, causing fiat percentage to increase and BTC percentage to decrease and viceversa, automatic sells when BTC price goes up, for the inverse reason.
 
 ### I want 50% in BTC, 25% ETH and 25% in ADA
 Edit `settings.py` with something like:
@@ -46,7 +46,7 @@ Edit `settings.py` with something like:
 fiat_asset = 'BUSD'  # or 'USDT'
 fiat_decimals = 2
 crypto_assets = ['BTC', 'ETH', 'ADA']
-exposure = 0.995  # max 0.995, min 0.005. Due to volatile nature of prices, a small margin should be left untouched.
+exposure = 0.995
 distribution = CustomDistribution(
     crypto_assets=crypto_assets,
     percentages={
