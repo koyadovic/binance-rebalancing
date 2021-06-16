@@ -2,7 +2,17 @@
 This is a simple project that rebalance your binance portfolio configured into `settings.py` file. The current code only accepts Binance but could be easily extended to accept other exchanges as well.
 
 ## For users
-Some common configurations that might be needed are exposed.
+
+Install everything with:
+```bash
+virtualenv -p python3 env
+source env/bin/activate
+pip install -r requirements.txt
+```
+
+This was tested with Python 3.8.
+
+Some common configurations that might be needed are exposed:
 
 ### Several crypto assets, same percentage for each one
 Edit `settings.py` with something like:
