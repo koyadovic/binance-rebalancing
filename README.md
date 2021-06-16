@@ -94,6 +94,8 @@ Use something like this:
 0 * * * * /bin/bash <path_to_cloned_project>/bin/rebalance.sh
 ```
 
+## Jupyter Notebooks
+There is a couple of notebooks inside `notebooks/` folder. Just run `jupyter-lab` and browse `notebooks/`. For more information, read `notebooks/README.md` file. 
 
 ## For developers
 
