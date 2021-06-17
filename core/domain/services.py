@@ -9,7 +9,7 @@ from shared.domain.event_dispatcher import event_dispatcher
 
 
 def rebalance(crypto_assets: list = None, fiat_asset: str = None,
-              fiat_decimals: str = None, exposure: float = None, with_confirmation=True,
+              fiat_decimals: int = None, exposure: float = None, with_confirmation=True,
               now=None, distribution: Distribution = None):
 
     now = now or datetime.utcnow().replace(tzinfo=pytz.utc)
