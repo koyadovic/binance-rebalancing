@@ -114,7 +114,7 @@ def main():
     for starting_date, end_date, tag in simulation_dates:
         for exposure in exposures:
             for current_assets in get_all_assets_combinations():
-                if len(current_assets) < 8:
+                if len(current_assets) != 10:
                     continue
                 for period in periods.keys():
                     n += 1
@@ -125,7 +125,7 @@ def main():
         for starting_date, end_date, tag in simulation_dates:
             for exposure in exposures:
                 for current_assets in get_all_assets_combinations():
-                    if len(current_assets) < 8:
+                    if len(current_assets) != 10:
                         continue
                     for period in periods.keys():
                         args = (starting_date, end_date, current_assets, exposure, period, tag, n, current_n + 1)
