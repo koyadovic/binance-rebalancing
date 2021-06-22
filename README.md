@@ -17,14 +17,15 @@ Some common configurations that might be needed are exposed:
 ### Several crypto assets, same percentage for each one
 Edit `settings.py` with something like:
 ```python
-fiat_asset = 'BUSD'  # or 'USDT'
-fiat_decimals = 2
 crypto_assets = [
     'BTC',
     'ETH',
     # add here all your assets
 ]
-exposure = 0.995  # max 0.995, min 0.005. Due to volatile nature of prices, a small margin should be left untouched.
+fiat_asset = 'BUSD'  # or 'USDT'
+fiat_decimals = 2
+fiat_untouched = float(len(crypto_assets) * 5)
+exposure = 1.0  # max 1.0, min 0.0
 distribution = EqualDistribution(crypto_assets=crypto_assets)
 ```
 This will keep the two assets in the example, 50% for each one of them. If you add three assets, there will be 33.3% for each one. And so on for four, five .. 
@@ -32,9 +33,10 @@ This will keep the two assets in the example, 50% for each one of them. If you a
 ### Only bitcoin but leaving 50% in fiat money
 Edit `settings.py` with something like:
 ```python
+crypto_assets = ['BTC']
 fiat_asset = 'BUSD'  # or 'USDT'
 fiat_decimals = 2
-crypto_assets = ['BTC']
+fiat_untouched = float(len(crypto_assets) * 5)
 exposure = 0.5  # Here is where you only expose the 50%
 distribution = EqualDistribution(crypto_assets=crypto_assets)
 ```
@@ -43,10 +45,11 @@ This will keep 50% of fiat and the other 50% with BTC. You can get with this con
 ### I want 50% in BTC, 25% ETH and 25% in ADA
 Edit `settings.py` with something like:
 ```python
+crypto_assets = ['BTC', 'ETH', 'ADA']
 fiat_asset = 'BUSD'  # or 'USDT'
 fiat_decimals = 2
-crypto_assets = ['BTC', 'ETH', 'ADA']
-exposure = 0.995
+fiat_untouched = float(len(crypto_assets) * 5)
+exposure = 1.0
 distribution = CustomDistribution(
     crypto_assets=crypto_assets,
     percentages={
