@@ -9,7 +9,8 @@ from shared.domain.event_dispatcher import event_dispatcher
 
 
 def rebalance(crypto_assets: list = None, fiat_asset: str = None,
-              fiat_decimals: int = None, fiat_untouched: float = 0.0, exposure: float = None, with_confirmation=True,
+              fiat_decimals: int = None, fiat_untouched: float = 0.0,
+              exposure: float = None, with_confirmation=True, quiet=False,
               now=None, distribution: Distribution = None):
 
     now = now or datetime.utcnow().replace(tzinfo=pytz.utc)
@@ -18,13 +19,14 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     user_interface: AbstractUserInterface = dependency_dispatcher.request_implementation(AbstractUserInterface)
     exchange: AbstractExchange = dependency_dispatcher.request_implementation(AbstractExchange)
 
-    compiled_data, current_fiat_balance, total_balance = _get_compiled_balances(crypto_assets, fiat_asset)
+    compiled_data, current_fiat_balance, total_balance = _get_compiled_balances(crypto_assets, fiat_asset, now)
     summary, rebalance, do_something = _compute_summary_and_rebalancing(crypto_assets, exposure, fiat_asset,
                                                                         fiat_decimals, compiled_data,
                                                                         total_balance, distribution, fiat_untouched)
     # show summary to user
-    total_balance_str = f'{fiat_asset} {round(total_balance, fiat_decimals)}'
-    user_interface.show_rebalance_summary(summary, total_balance_str)
+    if with_confirmation or not quiet:
+        total_balance_str = f'{fiat_asset} {round(total_balance, fiat_decimals)}'
+        user_interface.show_rebalance_summary(summary, total_balance_str)
 
     # if there is nothing to do, return
     if not do_something:
@@ -42,15 +44,17 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     # first sell operations
     for crypto_asset, data in rebalance.items():
         diff = data['diff']
+        avg_price = data['avg_price']
         if diff < 0:
             continue
         quantity = abs(diff)
         if quantity < 10.0:
             continue
         try:
-            user_interface.show_message(f'> Selling {fiat_asset} {quantity} of {crypto_asset}')
+            if with_confirmation or not quiet:
+                user_interface.show_message(f'> Selling {fiat_asset} {quantity} of {crypto_asset}')
             required_amount_sold += abs(diff)
-            exchange.place_fiat_sell_order(crypto_asset, quantity, fiat_asset)
+            exchange.place_fiat_sell_order(crypto_asset, quantity, fiat_asset, avg_price=avg_price)
             real_amount_sold += abs(diff)
         except Exception as e:
             user_interface.show_message(f'! Warning, error selling {crypto_asset}: {e}')
@@ -67,6 +71,10 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     for crypto_asset in sorted_cryptos:
         data = rebalance[crypto_asset]
         diff = data['diff']
+        avg_price = data['avg_price']
+        fiat_balance = exchange.get_asset_balance(fiat_asset)
+        if fiat_balance < 10.0:
+            break
         if diff > 0:
             continue
         for n in range(0, 50, 5):
@@ -76,15 +84,20 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
             if quantity < 10.0:
                 break
             try:
-                user_interface.show_message(f'> Buying {fiat_asset} {quantity} of {crypto_asset}')
-                exchange.place_fiat_buy_order(crypto_asset, quantity, fiat_asset)
+                if with_confirmation or not quiet:
+                    user_interface.show_message(f'> Buying {fiat_asset} {quantity} of {crypto_asset}')
+
+                if quantity > fiat_balance > 10.0:
+                    quantity = fiat_balance
+                exchange.place_fiat_buy_order(crypto_asset, quantity, fiat_asset, avg_price=avg_price)
                 break
+
             except Exception as e:
                 user_interface.show_message(f'! Warning, error buying {crypto_asset}: {e}')
                 continue
 
     # post operation emit events with updated balances
-    compiled_data, current_fiat_balance, total_balance = _get_compiled_balances(crypto_assets, fiat_asset)
+    compiled_data, current_fiat_balance, total_balance = _get_compiled_balances(crypto_assets, fiat_asset, now)
     for crypto_asset in crypto_assets:
         event_dispatcher.emit('crypto-asset-balance', **{
             'now': now,
@@ -98,7 +111,7 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     })
 
 
-def _get_compiled_balances(crypto_assets, fiat_asset):
+def _get_compiled_balances(crypto_assets, fiat_asset, instant):
     exchange: AbstractExchange = dependency_dispatcher.request_implementation(AbstractExchange)
 
     compiled_data = {}
@@ -106,7 +119,7 @@ def _get_compiled_balances(crypto_assets, fiat_asset):
     total_balance = current_fiat_balance
     for crypto_asset in crypto_assets:
         balance = exchange.get_asset_balance(asset=crypto_asset)
-        fiat_price = exchange.get_asset_fiat_price(asset=crypto_asset, fiat_asset=fiat_asset)
+        fiat_price = exchange.get_asset_fiat_price(asset=crypto_asset, fiat_asset=fiat_asset, instant=instant)
         total_balance += balance * fiat_price
         compiled_data[crypto_asset] = {
             'balance': balance,
@@ -129,6 +142,7 @@ def _compute_summary_and_rebalancing(crypto_assets, exposure, fiat_asset, fiat_d
         percentage = distribution.assign_percentage(crypto_asset) * exposure
         wanted_fiat_balance = (percentage / 100) * total_balance_without_tiny_fiat
         current_fiat = compiled_data[crypto_asset]['fiat']
+        avg_price = compiled_data[crypto_asset]['avg_price']
         diff = current_fiat - wanted_fiat_balance
 
         current_percentage = round((current_fiat / total_balance_without_tiny_fiat) * 100, 2)
@@ -157,6 +171,7 @@ def _compute_summary_and_rebalancing(crypto_assets, exposure, fiat_asset, fiat_d
                 row.append(f'SELL {fiat_asset} {abs(round(diff, fiat_decimals))}')
         summary.append(row)
         rebalance[crypto_asset] = {
+            'avg_price': avg_price,
             'balance': compiled_data[crypto_asset]['balance'],
             'wanted_fiat': wanted_fiat_balance,
             'current_fiat': compiled_data[crypto_asset]['fiat'],
