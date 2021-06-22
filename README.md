@@ -130,3 +130,8 @@ dependency_dispatcher.register_implementation(
 
 ### Use the core with a ncurses frontend or another GUI
 Instead of running everything using rebalance.py and settings.py, could be feasible running everything from a GUI with persistent settings letting users control everything.
+
+
+## Donations
+
+If you found it helpful, and want to contribute, Bitcoin donations are appreciated at the address `bc1qhhps2klg6wr54lm2yedd9dhtwe9xsjmqz0w545`

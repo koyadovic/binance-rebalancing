@@ -1,23 +1,26 @@
 from core.domain.distribution import Distribution, EqualDistribution
 
-fiat_asset = 'BUSD'
-fiat_decimals = 2
+
 crypto_assets = [
     'BTC',
     'ETH',
     'BNB',
-    # 'ADA',
-    # 'UNI',
-    # 'VET',
-    # 'DOT',
-    # 'SOL',
+    'ADA',
+    'UNI',
+    'VET',
+    'DOT',
+    'SOL',
     # 'AAVE',
     # 'NANO',
-    # 'MATIC',
+    'MATIC',
     # 'XLM',
     # 'EOS',
-    # 'LINK',
+    'LINK',
     # 'ATOM',
 ]
-exposure = 0.995  # max 0.995, min 0.005. Due to volatile nature of prices, a small margin should be left untouched.
+
+fiat_asset = 'BUSD'
+fiat_decimals = 2
+fiat_untouched = float(len(crypto_assets) * 5)
+exposure = 1.0  # max 1.0, min 0.0
 distribution: Distribution = EqualDistribution(crypto_assets=crypto_assets)

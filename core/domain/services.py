@@ -9,7 +9,7 @@ from shared.domain.event_dispatcher import event_dispatcher
 
 
 def rebalance(crypto_assets: list = None, fiat_asset: str = None,
-              fiat_decimals: int = None, exposure: float = None, with_confirmation=True,
+              fiat_decimals: int = None, fiat_untouched: float = 0.0, exposure: float = None, with_confirmation=True,
               now=None, distribution: Distribution = None):
 
     now = now or datetime.utcnow().replace(tzinfo=pytz.utc)
@@ -21,7 +21,7 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     compiled_data, current_fiat_balance, total_balance = _get_compiled_balances(crypto_assets, fiat_asset)
     summary, rebalance, do_something = _compute_summary_and_rebalancing(crypto_assets, exposure, fiat_asset,
                                                                         fiat_decimals, compiled_data,
-                                                                        total_balance, distribution)
+                                                                        total_balance, distribution, fiat_untouched)
     # show summary to user
     total_balance_str = f'{fiat_asset} {round(total_balance, fiat_decimals)}'
     user_interface.show_rebalance_summary(summary, total_balance_str)
@@ -117,19 +117,21 @@ def _get_compiled_balances(crypto_assets, fiat_asset):
 
 
 def _compute_summary_and_rebalancing(crypto_assets, exposure, fiat_asset, fiat_decimals, compiled_data, total_balance,
-                                     distribution):
+                                     distribution, fiat_untouched):
     do_something = False
+
+    total_balance_without_tiny_fiat = total_balance - fiat_untouched
 
     # equally distributed percentages between crypto assets
     summary = []
     rebalance = {}
     for crypto_asset in crypto_assets:
         percentage = distribution.assign_percentage(crypto_asset) * exposure
-        wanted_fiat_balance = (percentage / 100) * total_balance
+        wanted_fiat_balance = (percentage / 100) * total_balance_without_tiny_fiat
         current_fiat = compiled_data[crypto_asset]['fiat']
         diff = current_fiat - wanted_fiat_balance
 
-        current_percentage = round((current_fiat / total_balance) * 100, 2)
+        current_percentage = round((current_fiat / total_balance_without_tiny_fiat) * 100, 2)
         target_percentage = round(percentage, 2)
         diff_percentage = current_percentage - target_percentage
 

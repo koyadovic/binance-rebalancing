@@ -16,6 +16,7 @@ def main():
         crypto_assets=settings.crypto_assets,
         fiat_asset=settings.fiat_asset,
         fiat_decimals=settings.fiat_decimals,
+        fiat_untouched=settings.fiat_untouched,
         exposure=settings.exposure,
         with_confirmation=len(sys.argv) == 1 or sys.argv[1].lower().strip() not in ['--yes', '-y'],
         distribution=settings.distribution
