@@ -22,7 +22,7 @@ class BinanceExchange(AbstractExchange):
         return float(self.client.get_asset_balance(asset=asset)['free'])
 
     @execution_with_attempts(attempts=3, wait_seconds=5)
-    def get_asset_fiat_price(self, asset: str, fiat_asset: str) -> float:
+    def get_asset_fiat_price(self, asset: str, fiat_asset: str, instant=None) -> float:
         return float(self.client.get_avg_price(symbol=f'{asset}{fiat_asset}')['price'])
 
     @execution_with_attempts(attempts=3, wait_seconds=5)

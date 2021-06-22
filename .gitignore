@@ -133,3 +133,7 @@ dmypy.json
 .idea
 rebalance.output
 *.db
+*.pkl
+*.json
+*.csv
+
