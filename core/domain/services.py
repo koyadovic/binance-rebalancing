@@ -4,6 +4,7 @@ import pytz
 
 from core.domain.distribution import Distribution
 from core.domain.interfaces import AbstractExchange, AbstractUserInterface
+from core.domain.rebalancing_referees import AbstractRebalancingReferee
 from shared.domain.dependencies import dependency_dispatcher
 from shared.domain.event_dispatcher import event_dispatcher
 
@@ -18,8 +19,15 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     # dependencies
     user_interface: AbstractUserInterface = dependency_dispatcher.request_implementation(AbstractUserInterface)
     exchange: AbstractExchange = dependency_dispatcher.request_implementation(AbstractExchange)
+    rebalancing_referee: AbstractRebalancingReferee = dependency_dispatcher.request_implementation(AbstractRebalancingReferee)
 
     compiled_data, current_fiat_balance, total_balance = _get_compiled_balances(crypto_assets, fiat_asset, now)
+
+    # Decide to rebalance or to not rebalance
+    prices = {asset: data['avg_price'] for asset, data in compiled_data.items()}
+    if not rebalancing_referee.should_rebalance(now, prices):
+        return
+
     summary, rebalance, do_something = _compute_summary_and_rebalancing(crypto_assets, exposure, fiat_asset,
                                                                         fiat_decimals, compiled_data,
                                                                         total_balance, distribution, fiat_untouched)
@@ -96,6 +104,9 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
             except Exception as e:
                 user_interface.show_message(f'! Warning, error buying {crypto_asset}: {e}')
                 continue
+
+    # after rebalancing
+    rebalancing_referee.rebalanced(now, prices)
 
     # post operation emit events with updated balances
     compiled_data, current_fiat_balance, total_balance = _get_compiled_balances(crypto_assets, fiat_asset, now)
