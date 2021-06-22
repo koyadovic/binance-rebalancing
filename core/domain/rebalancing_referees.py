@@ -51,8 +51,10 @@ class OnPumpOrDumpRebalancingReferee(AbstractRebalancingReferee):
             past_price = past_prices[asset]
             percentage_change = ((current_price - past_price) / past_price) * 100.0
             if percentage_change > self.trigger_percentage:
+                # print(f'> should_rebalance True! percentage_change {percentage_change} > {self.trigger_percentage}')
                 return True
             if percentage_change < -self.trigger_percentage:
+                # print(f'> should_rebalance True! percentage_change {percentage_change} < {-self.trigger_percentage}')
                 return True
         # print(f'> should_rebalance False')
         return False
@@ -60,6 +62,7 @@ class OnPumpOrDumpRebalancingReferee(AbstractRebalancingReferee):
     def rebalanced(self, current_datetime, prices: dict):
         self.state['last_rebalance'] = current_datetime
         self.state['prices'] = prices
+        # print(f'Rebalanced!')
         self._save_state()
 
     def _save_state(self):
