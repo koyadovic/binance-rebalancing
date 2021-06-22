@@ -83,11 +83,12 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
                 quantity = real_amount_sold
             if quantity < 10.0:
                 break
+            quantity = int(quantity * (10 ** fiat_decimals)) / (10 ** fiat_decimals)
             try:
                 if with_confirmation or not quiet:
                     user_interface.show_message(f'> Buying {fiat_asset} {quantity} of {crypto_asset}')
 
-                if quantity > fiat_balance > 10.0:
+                if quantity > fiat_balance:
                     quantity = fiat_balance
                 exchange.place_fiat_buy_order(crypto_asset, quantity, fiat_asset, avg_price=avg_price)
                 break
