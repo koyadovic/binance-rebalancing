@@ -17,14 +17,14 @@ assets = [
     'ETH',
     'BNB',
     'VET',
-    # 'ADA',
-    # 'EOS',
-    # 'MATIC',
-    # 'NANO',
-    # 'XLM',
-    # 'ATOM',
-    # 'LINK',
-    # 'LTC',
+    'ADA',
+    'EOS',
+    'MATIC',
+    'NANO',
+    'XLM',
+    'ATOM',
+    'LINK',
+    'LTC',
 
     # 'UNI',
     # 'DOT',
@@ -88,10 +88,11 @@ periods = {
     '2w': timedelta(days=14),
 }
 
-exposures = [0.0, 0.25, 0.5, 0.75, 1.0]
+exposures = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
 fiat_asset = 'USDT'
 fiat_decimals = 2
+fiat_untouched = len(assets) * 5.0
 initial_fiat_invest = 3000
 
 
@@ -113,6 +114,8 @@ def main():
     for starting_date, end_date, tag in simulation_dates:
         for exposure in exposures:
             for current_assets in get_all_assets_combinations():
+                if len(current_assets) < 8:
+                    continue
                 for period in periods.keys():
                     n += 1
 
@@ -122,6 +125,8 @@ def main():
         for starting_date, end_date, tag in simulation_dates:
             for exposure in exposures:
                 for current_assets in get_all_assets_combinations():
+                    if len(current_assets) < 8:
+                        continue
                     for period in periods.keys():
                         args = (starting_date, end_date, current_assets, exposure, period, tag, n, current_n + 1)
                         current_n += 1
@@ -159,6 +164,7 @@ def _processing_function(starting_date, end_date, current_assets, exposure, peri
             crypto_assets=current_assets,
             fiat_asset=fiat_asset,
             fiat_decimals=fiat_decimals,
+            fiat_untouched=fiat_untouched,
             exposure=exposure,
             with_confirmation=False,
             now=now,
