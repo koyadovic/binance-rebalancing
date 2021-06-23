@@ -26,13 +26,13 @@ class OnPumpOrDumpRebalancingReferee(AbstractRebalancingReferee):
         'ending_prices': {},
     }
 
-    def __init__(self, last_rebalance_expiration_delta=None, trigger_percentage=None, use_file=True):
+    def __init__(self, last_rebalance_expiration_delta=None, trigger_percentage=None, persistent_state=True):
         self.last_rebalance_expiration_delta = last_rebalance_expiration_delta
         self.trigger_percentage = trigger_percentage
         self.cls = OnPumpOrDumpRebalancingReferee
-        self.use_file = use_file
+        self.persistent_state = persistent_state
 
-        if self.use_file:
+        if self.persistent_state:
             try:
                 with open(self.cls._STATE_FILE, 'rb') as f:
                     self.state = pickle.loads(f.read())
@@ -81,11 +81,6 @@ class OnPumpOrDumpRebalancingReferee(AbstractRebalancingReferee):
                         if percentage_change < -self.trigger_percentage:
                             rebalance = True
 
-                        # if rebalance:
-                        #     self.state['starting_prices'][asset] = price
-                        #     self.state['ending_prices'][asset] = None
-                        #     state_changes = True
-
                     elif (price > asset_starting_price > asset_ending_price) or (asset_ending_price > asset_starting_price > price):
                         self.state['starting_prices'][asset] = price
                         self.state['ending_prices'][asset] = None
@@ -108,7 +103,7 @@ class OnPumpOrDumpRebalancingReferee(AbstractRebalancingReferee):
         self._save_state()
 
     def _save_state(self):
-        if self.use_file:
+        if self.persistent_state:
             with open(self.cls._STATE_FILE, 'wb') as f:
                 f.write(pickle.dumps(self.state))
 

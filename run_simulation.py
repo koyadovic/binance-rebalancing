@@ -78,14 +78,18 @@ simulation_dates = [
     (datetime(2020, 9, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2021, 4, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
     (datetime(2020, 10, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2021, 5, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
     (datetime(2020, 11, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2021, 6, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
+    (datetime(2020, 11, 19, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2021, 6, 19, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
+    (datetime(2020, 11, 20, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2021, 6, 20, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
+    (datetime(2020, 11, 21, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2021, 6, 21, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
+    (datetime(2020, 11, 22, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2021, 6, 22, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
 ]
 
 
 periods = {
     '1h': timedelta(hours=1),
     '1d': timedelta(days=1),
-    # '1w': timedelta(days=7),
-    # '2w': timedelta(days=14),
+    '1w': timedelta(days=7),
+    '2w': timedelta(days=14),
 }
 
 exposures = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
@@ -114,7 +118,7 @@ def main():
     for starting_date, end_date, tag in simulation_dates:
         for exposure in exposures:
             for current_assets in get_all_assets_combinations():
-                if len(current_assets) != 10:
+                if len(current_assets) < 10:
                     continue
                 for period in periods.keys():
                     n += 1
@@ -125,7 +129,7 @@ def main():
         for starting_date, end_date, tag in simulation_dates:
             for exposure in exposures:
                 for current_assets in get_all_assets_combinations():
-                    if len(current_assets) != 10:
+                    if len(current_assets) < 10:
                         continue
                     for period in periods.keys():
                         args = (starting_date, end_date, current_assets, exposure, period, tag, n, current_n + 1)
@@ -189,6 +193,7 @@ def _processing_function(starting_date, end_date, current_assets, exposure, peri
             crypto_assets=current_assets,
             fiat_asset=fiat_asset,
             fiat_decimals=fiat_decimals,
+            fiat_untouched=fiat_untouched,
             exposure=exposure,
             with_confirmation=False,
             now=now,

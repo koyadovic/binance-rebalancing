@@ -30,13 +30,13 @@ def init_core_module_for_simulations():
         )
     )
     _common_initialization()
+    # dependency_dispatcher.register_implementation(AbstractRebalancingReferee, OnPumpOrDumpRebalancingReferee(
+    #     last_rebalance_expiration_delta=timedelta(days=15),
+    #     trigger_percentage=5,
+    #     persistent_state=False
+    # ))
 
 
 def _common_initialization():
-    # dependency_dispatcher.register_implementation(AbstractRebalancingReferee, OnExecutionRebalancingReferee())
-    dependency_dispatcher.register_implementation(AbstractRebalancingReferee, OnPumpOrDumpRebalancingReferee(
-        last_rebalance_expiration_delta=timedelta(days=30),
-        trigger_percentage=15,
-        use_file=False
-    ))
+    dependency_dispatcher.register_implementation(AbstractRebalancingReferee, OnExecutionRebalancingReferee())
     dependency_dispatcher.register_implementation(AbstractUserInterface, TextUserInterface())
