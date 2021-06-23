@@ -40,49 +40,20 @@ def get_all_assets_combinations():
             yield list(combination)
 
 
-simulation_dates = [
-    # (datetime(2018, 1, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2018, 8, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    # (datetime(2018, 2, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2018, 9, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    # (datetime(2018, 3, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2018, 10, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    # (datetime(2018, 4, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2018, 11, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    # (datetime(2018, 5, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2018, 12, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    # (datetime(2018, 6, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2019, 1, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    # (datetime(2018, 7, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2019, 2, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    # (datetime(2018, 8, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2019, 3, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    # (datetime(2018, 9, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2019, 4, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    # (datetime(2018, 10, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2019, 5, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    # (datetime(2018, 11, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2019, 6, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    # (datetime(2018, 12, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2019, 7, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    # (datetime(2019, 1, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2019, 8, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    # (datetime(2019, 2, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2019, 9, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    # (datetime(2019, 3, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2019, 10, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    # (datetime(2019, 4, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2019, 11, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    # (datetime(2019, 5, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2019, 12, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    # (datetime(2019, 6, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2020, 1, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    # (datetime(2019, 7, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2020, 2, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
+starting_date = datetime(2019, 8, 1, 0, 0, 0).replace(tzinfo=pytz.utc)
+ending_date = datetime(2021, 3, 1, 0, 0, 0).replace(tzinfo=pytz.utc)
+
+simulation_dates = []
+
+while starting_date < ending_date:
+    simulation_dates.append(
+        (starting_date, starting_date + timedelta(days=90), '')
+    )
+    starting_date += timedelta(days=30)
 
 
-    (datetime(2019, 8, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2020, 3, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    (datetime(2019, 9, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2020, 4, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    (datetime(2019, 10, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2020, 5, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    (datetime(2019, 11, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2020, 6, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    (datetime(2019, 12, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2020, 7, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    (datetime(2020, 1, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2020, 8, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    (datetime(2020, 2, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2020, 9, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    (datetime(2020, 3, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2020, 10, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    (datetime(2020, 4, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2020, 11, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    (datetime(2020, 5, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2020, 12, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    (datetime(2020, 6, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2021, 1, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    (datetime(2020, 7, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2021, 2, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    (datetime(2020, 8, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2021, 3, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    (datetime(2020, 9, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2021, 4, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    (datetime(2020, 10, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2021, 5, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    (datetime(2020, 11, 1, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2021, 6, 1, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    (datetime(2020, 11, 19, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2021, 6, 19, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    (datetime(2020, 11, 20, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2021, 6, 20, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    (datetime(2020, 11, 21, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2021, 6, 21, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-    (datetime(2020, 11, 22, 0, 0, 0).replace(tzinfo=pytz.utc), datetime(2021, 6, 22, 0, 0, 0).replace(tzinfo=pytz.utc), ''),
-]
+for item in simulation_dates:
+    print(f'Date Range {item[0]} - {item[1]}')
 
 
 periods = {
