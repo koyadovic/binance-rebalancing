@@ -37,22 +37,34 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
         total_balance_str = f'{fiat_asset} {round(total_balance, fiat_decimals)}'
         user_interface.show_rebalance_summary(summary, total_balance_str)
 
-    # We need to check if there is any buy, if not, don't do anything
-    any_buy = False
-    sorted_cryptos = sorted([k for k in rebalance.keys()], key=lambda key: rebalance[key]['diff'])
-    for crypto_asset in sorted_cryptos:
-        data = rebalance[crypto_asset]
-        diff = data['diff']
-        if diff > 0:
-            continue
-        if abs(diff) >= 10:
-            any_buy = True
-            break
+    """
+    Acción reacción, cada venta tiene que tener una compra aparejada.
+    Hay que mapear qué hay que vender para saber qué hay que comprar.
+    En este caso ya se podría ver si existe conversión directa entre assets.
+    
+    - Empareja por similitud
+    - Busca la operación con el número más bajo de los dos similares
+    - Si existe conversión directa, se hace
+    
+    Sólo se producen operaciones emparejadas, con lo que tendríamos englobado lo de abajo.
+    """
 
-    if not any_buy:
-        if not quiet:
-            user_interface.show_message(f'No buy operations, no doing nothing ...')
-        return
+    # TODO reactivate this
+    # We need to check if there is any buy, if not, don't do anything
+    # any_buy = False
+    # sorted_cryptos = sorted([k for k in rebalance.keys()], key=lambda key: rebalance[key]['diff'])
+    # for crypto_asset in sorted_cryptos:
+    #     data = rebalance[crypto_asset]
+    #     diff = data['diff']
+    #     if diff > 0:
+    #         continue
+    #     if abs(diff) >= 10:
+    #         any_buy = True
+    #         break
+    # if not any_buy:
+    #     if not quiet:
+    #         user_interface.show_message(f'No buy operations, no doing nothing ...')
+    #     return
 
     # if there is nothing to do, return
     if not do_something:

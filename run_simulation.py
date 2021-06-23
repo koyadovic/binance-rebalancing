@@ -42,13 +42,16 @@ def get_all_assets_combinations():
 
 # simulation date ranges
 starting_date = datetime(2019, 8, 1, 0, 0, 0).replace(tzinfo=pytz.utc)
-ending_date = datetime(2021, 3, 1, 0, 0, 0).replace(tzinfo=pytz.utc)
+ending_date = datetime(2021, 6, 1, 0, 0, 0).replace(tzinfo=pytz.utc)
+
 simulation_dates = []
-while starting_date < ending_date:
-    simulation_dates.append(
-        (starting_date, starting_date + timedelta(days=90), '')
-    )
-    starting_date += timedelta(days=30)
+start = starting_date
+while True:
+    end = start + timedelta(days=300)
+    if end > ending_date:
+        break
+    simulation_dates.append((start, end, ''))
+    start += timedelta(days=30)
 
 
 periods = {
