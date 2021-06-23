@@ -180,7 +180,6 @@ def _processing_function(starting_date, end_date, current_assets, exposure, peri
     hodl_profit = round(((hodl_total_fiat_balance - initial_fiat_invest) / initial_fiat_invest) * 100, 2)
     rebalance_profit = round(((rebalance_fiat_balance - initial_fiat_invest) / initial_fiat_invest) * 100, 2)
     diff_profit = ((rebalance_fiat_balance - hodl_total_fiat_balance) / hodl_total_fiat_balance) * 100.0
-    print(f'--- {current_n}/{n} ---')
     row = [
         starting_date, end_date, tag,
         len(current_assets), ','.join(current_assets),
@@ -188,6 +187,7 @@ def _processing_function(starting_date, end_date, current_assets, exposure, peri
         rebalance_fiat_balance, hodl_total_fiat_balance,
         rebalance_profit, hodl_profit, diff_profit,
     ]
+    print(f'--- {current_n}/{n} ---')
     return row
 
 
