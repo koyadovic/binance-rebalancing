@@ -31,10 +31,28 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     summary, rebalance, do_something = _compute_summary_and_rebalancing(crypto_assets, exposure, fiat_asset,
                                                                         fiat_decimals, compiled_data,
                                                                         total_balance, distribution, fiat_untouched)
+
     # show summary to user
     if with_confirmation or not quiet:
         total_balance_str = f'{fiat_asset} {round(total_balance, fiat_decimals)}'
         user_interface.show_rebalance_summary(summary, total_balance_str)
+
+    # We need to check if there is any buy, if not, don't do anything
+    any_buy = False
+    sorted_cryptos = sorted([k for k in rebalance.keys()], key=lambda key: rebalance[key]['diff'])
+    for crypto_asset in sorted_cryptos:
+        data = rebalance[crypto_asset]
+        diff = data['diff']
+        if diff > 0:
+            continue
+        if abs(diff) >= 10:
+            any_buy = True
+            break
+
+    if not any_buy:
+        if not quiet:
+            user_interface.show_message(f'No buy operations, no doing nothing ...')
+        return
 
     # if there is nothing to do, return
     if not do_something:
@@ -190,4 +208,20 @@ def _compute_summary_and_rebalancing(crypto_assets, exposure, fiat_asset, fiat_d
             'diff': diff,
             'diff_percentage': diff_percentage,
         }
+
+    # # diff < 0 is buy
+    # any_buy = False
+    # for asset, data in rebalance.items():
+    #     if data['diff'] < -5.0:
+    #         any_buy = True
+    #         break
+    #
+    # import ipdb; ipdb.set_trace(context=10)
+    #
+    # if not any_buy:
+    #     for asset, data in rebalance.items():
+    #         if data['diff'] > 5:
+    #             rebalance[asset]['diff'] = 0
+    #             # data['diff'] = 0
+
     return summary, rebalance, do_something

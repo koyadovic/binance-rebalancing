@@ -40,20 +40,15 @@ def get_all_assets_combinations():
             yield list(combination)
 
 
+# simulation date ranges
 starting_date = datetime(2019, 8, 1, 0, 0, 0).replace(tzinfo=pytz.utc)
 ending_date = datetime(2021, 3, 1, 0, 0, 0).replace(tzinfo=pytz.utc)
-
 simulation_dates = []
-
 while starting_date < ending_date:
     simulation_dates.append(
         (starting_date, starting_date + timedelta(days=90), '')
     )
     starting_date += timedelta(days=30)
-
-
-for item in simulation_dates:
-    print(f'Date Range {item[0]} - {item[1]}')
 
 
 periods = {
@@ -63,7 +58,7 @@ periods = {
     '2w': timedelta(days=14),
 }
 
-exposures = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+exposures = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 
 fiat_asset = 'USDT'
 fiat_decimals = 2
@@ -89,7 +84,7 @@ def main():
     for starting_date, end_date, tag in simulation_dates:
         for exposure in exposures:
             for current_assets in get_all_assets_combinations():
-                if len(current_assets) < 10:
+                if len(current_assets) < 8:
                     continue
                 for period in periods.keys():
                     n += 1
@@ -100,7 +95,7 @@ def main():
         for starting_date, end_date, tag in simulation_dates:
             for exposure in exposures:
                 for current_assets in get_all_assets_combinations():
-                    if len(current_assets) < 10:
+                    if len(current_assets) < 8:
                         continue
                     for period in periods.keys():
                         args = (starting_date, end_date, current_assets, exposure, period, tag, n, current_n + 1)
