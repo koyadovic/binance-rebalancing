@@ -4,27 +4,17 @@ from datetime import datetime, timedelta
 from typing import List
 
 from core.domain.entities import Operation
-from core.domain.interfaces import AbstractExchange
 from binance import Client
+from core.infrastructure.exchange_binance import BinanceExchange
 from shared.domain.decorators import execution_with_attempts
 
 
-class BinanceSimulationExchange(AbstractExchange):
+class BinanceSimulationExchange(BinanceExchange):
 
     def __init__(self, api_key=None, api_secret=None):
-        self._api_key = api_key
-        self._api_secret = api_secret
-        self._client = None
+        super().__init__(api_key=api_key, api_secret=api_secret)
         self._month_prices = {}
-        self._exchange_info = None
         self.balances = {}
-
-    @property
-    def client(self):
-        # lazy client instantiation
-        if self._client is None:
-            self._client = Client(self._api_key, self._api_secret)
-        return self._client
 
     def reset_balances(self, fiat_asset, fiat_balance):
         self.balances = {fiat_asset: fiat_balance}
@@ -129,23 +119,43 @@ class BinanceSimulationExchange(AbstractExchange):
             'volume': float(data_item[5]),
         }
 
-    def compute_fees(self, operations: List[Operation], fiat_asset: str, **kwargs) -> float:
-        total_fees = 0.0
+    def execute_operations(self, operations: List[Operation], avg_prices=None, **kwargs):
+        # TODO avg_prices must be a dict like {'ADA/BTC': ada_btc_price}
+        # TODO esto hay que revisarlo.
+        #  Quizá para simulaciones lo mejor sea pasar los precios en BUSD o USDT y hacer conversiones aquí.
+        #  Binance es posible que no tenga un histórico tan amplio de precios entre pares
         for operation in operations:
-            if operation.counter_currency == fiat_asset:
-                total_fees += operation.counter_amount * (0.1 / 100.0)
-            else:
-                counter_fiat_price = self.get_asset_price(operation.counter_currency, fiat_asset, **kwargs)
-                total_fees += (operation.counter_amount / counter_fiat_price) * (0.1 / 100.0)
-        return total_fees
+            avg_price = avg_prices[operation.pair]
 
-    def fix_operations_for_the_exchange(self, operations: List[Operation]) -> List[Operation]:
-        # TODO
-        return operations
+            quote_amount = operation.quote_amount
+            base_balance = self.get_asset_balance(operation.base_currency)
+            quote_balance = self.get_asset_balance(operation.quote_currency)
 
-    def execute_operations(self, operations: List[Operation]):
-        # TODO
-        pass
+            if operation.type == Operation.TYPE_SELL:
+
+                if base_balance < (quote_amount / avg_price):
+                    print('!!!!!!!!!!!!! NO SE PUEDE VENDER !!!!!!!!!!!!!')
+                    return
+
+                base_balance -= quote_amount / avg_price
+                quote_amount *= 0.999  # binance fee
+                quote_balance += quote_amount
+
+                self.balances[operation.base_currency] = base_balance
+                self.balances[operation.quote_currency] = quote_balance
+
+            elif operation.type == Operation.TYPE_BUY:
+
+                if quote_balance < quote_amount:
+                    print('!!!!!!!!!!!!! NO SE PUEDE COMPRAR !!!!!!!!!!!!!')
+                    return
+
+                quote_balance -= quote_amount
+                quote_amount *= 0.999  # binance fee
+                base_balance += quote_amount / avg_price
+
+                self.balances[operation.base_currency] = base_balance
+                self.balances[operation.quote_currency] = quote_balance
 
     def _get_exchange_info(self):
         if self._exchange_info is None:
@@ -153,7 +163,3 @@ class BinanceSimulationExchange(AbstractExchange):
                 contents = f.read()
             self._exchange_info = {symbol_data['symbol']: symbol_data for symbol_data in json.loads(contents)['symbols']}
         return self._exchange_info
-
-    @classmethod
-    def _fix_amount_by_step_size(cls, amount, step_size):
-        return round(amount // step_size * step_size, 8)

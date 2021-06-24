@@ -50,20 +50,78 @@ class BinanceExchange(AbstractExchange):
     def compute_fees(self, operations: List[Operation], fiat_asset: str, **kwargs) -> float:
         total_fees = 0.0
         for operation in operations:
-            if operation.counter_currency == fiat_asset:
-                total_fees += operation.counter_amount * (0.1 / 100.0)
+            if operation.quote_currency == fiat_asset:
+                total_fees += operation.quote_amount * (0.1 / 100.0)
             else:
-                counter_fiat_price = self.get_asset_price(operation.counter_currency, fiat_asset, **kwargs)
-                total_fees += (operation.counter_amount / counter_fiat_price) * (0.1 / 100.0)
+                counter_fiat_price = self.get_asset_price(operation.quote_currency, fiat_asset, **kwargs)
+                total_fees += (operation.quote_amount / counter_fiat_price) * (0.1 / 100.0)
         return total_fees
 
-    def fix_operations_for_the_exchange(self, operations: List[Operation]) -> List[Operation]:
-        # TODO
-        return operations
+    def get_exchange_valid_operations(self, operations: List[Operation]) -> List[Operation]:
+        exchange_info = self._get_exchange_info()
 
-    def execute_operations(self, operations: List[Operation]):
-        # TODO
-        pass
+        result_operations = []
+        for operation in operations:
+            cloned_operation = operation.clone()
+
+            valid_operation = True
+            reason = ''
+
+            pair_info = exchange_info.get(f'{cloned_operation.base_currency}{cloned_operation.quote_currency}', None)
+            if pair_info is None:
+                valid_operation = False
+                reason = 'pair selected does not exist'
+
+            if valid_operation:
+                for filtr in pair_info['filters']:
+                    filter_type = filtr['filterType']
+                    if filter_type == 'PRICE_FILTER':
+                        """
+                        ETHBUSD
+                        "minPrice": "0.01000000",
+                        "maxPrice": "100000.00000000",
+                        "tickSize": "0.01000000" <--- step_size of quote asset
+                        """
+                        step_size = round(float(filtr['tickSize']), 8)
+                        cloned_operation.quote_amount = self._fix_amount_by_step_size(cloned_operation.quote_amount,
+                                                                                      step_size)
+            if valid_operation:
+                for filtr in pair_info['filters']:
+                    filter_type = filtr['filterType']
+                    if filter_type == 'MIN_NOTIONAL':
+                        """
+                        ETHBUSD
+                        "minNotional": "10.00000000", <--- minimum amount of quote asset
+                        "applyToMarket": true,
+                        "avgPriceMins": 5
+                        """
+                        minimum_operation_amount = round(float(filtr['minNotional']), 8)
+                        if cloned_operation.quote_amount < minimum_operation_amount:
+                            valid_operation = False
+                            reason = 'operation does not meet the minimum amount required to operate'
+                            break
+
+            if valid_operation:
+                result_operations.append(cloned_operation)
+            else:
+                print(f'Operation {operation} was discarded: {reason}')
+
+        return result_operations
+
+    def execute_operations(self, operations: List[Operation], **kwargs):
+        for operation in operations:
+            if operation.type == Operation.TYPE_SELL:
+                self.place_sell_order(
+                    operation.base_currency,
+                    operation.quote_currency,
+                    operation.quote_amount,
+                )
+            elif operation.type == Operation.TYPE_BUY:
+                self.place_buy_order(
+                    operation.base_currency,
+                    operation.quote_currency,
+                    operation.quote_amount,
+                )
 
     @execution_with_attempts(attempts=3, wait_seconds=5)
     def _get_exchange_info(self):

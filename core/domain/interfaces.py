@@ -23,10 +23,10 @@ class AbstractExchange:
     def compute_fees(self, operations: List[Operation], fiat_asset: str, **kwargs) -> float:
         raise NotImplementedError
 
-    def fix_operations_for_the_exchange(self, operations: List[Operation]) -> List[Operation]:
+    def get_exchange_valid_operations(self, operations: List[Operation]) -> List[Operation]:
         raise NotImplementedError
 
-    def execute_operations(self, operations: List[Operation]):
+    def execute_operations(self, operations: List[Operation], **kwargs):
         raise NotImplementedError
 
 
