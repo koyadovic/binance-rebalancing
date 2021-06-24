@@ -29,6 +29,9 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
                                                                         fiat_decimals, compiled_data,
                                                                         total_balance, distribution, fiat_untouched)
 
+    # TODO necesitamos que rebalance se transforme en un List[Operation]
+    #  El resto del código debe entender en operar con List[Operation]
+
     # show summary to user
     if with_confirmation or not quiet:
         total_balance_str = f'{fiat_asset} {round(total_balance, fiat_decimals)}'
