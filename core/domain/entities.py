@@ -13,6 +13,14 @@ class Operation:
         self.quote_amount = quote_amount
         self._self_validation()
 
+    @property
+    def base_currency(self):
+        return self.pair.split('/')[0]
+
+    @property
+    def quote_currency(self):
+        return self.pair.split('/')[1]
+
     def _self_validation(self):
         if '/' not in str(self.pair):
             raise ValueError(f'Invalid pair format. Must be provided as \"BASE/QUOTE\". For example: \"BTC/BUSD\"')
@@ -26,11 +34,3 @@ class Operation:
 
     def __repr__(self):
         return self.__str__()
-
-    @property
-    def base_currency(self):
-        return self.pair.split('/')[0]
-
-    @property
-    def quote_currency(self):
-        return self.pair.split('/')[1]
