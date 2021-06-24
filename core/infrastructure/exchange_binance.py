@@ -104,12 +104,12 @@ class BinanceExchange(AbstractExchange):
             if valid_operation:
                 result_operations.append(cloned_operation)
             else:
-                print(f'Operation {operation} was discarded: {reason}')
+                # print(f'Operation {operation} was discarded: {reason}')
+                pass
 
         return result_operations
 
     def execute_operations(self, operations: List[Operation], **kwargs):
-        # TODO toma 0.995 como el fee
         for operation in operations:
             if operation.type == Operation.TYPE_SELL:
                 self.place_sell_order(
@@ -125,6 +125,9 @@ class BinanceExchange(AbstractExchange):
                     operation.quote_amount,
                 )
                 print(f'Executed -> {operation}')
+
+    def exchange_pair_exist(self, base_asset, quote_asset) -> bool:
+        return f'{base_asset}{quote_asset}' in self._get_exchange_info()
 
     @execution_with_attempts(attempts=3, wait_seconds=5)
     def _get_exchange_info(self):

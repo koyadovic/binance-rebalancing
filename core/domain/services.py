@@ -10,11 +10,6 @@ from shared.domain.dependencies import dependency_dispatcher
 from shared.domain.event_dispatcher import event_dispatcher
 
 
-def number_similarity(n1, n2):
-    ns = [n1, n2]
-    return min(ns) / max(ns)
-
-
 def rebalance(crypto_assets: list = None, fiat_asset: str = None,
               fiat_decimals: int = None, fiat_untouched: float = 0.0,
               exposure: float = None, with_confirmation=True, quiet=False,
@@ -33,17 +28,122 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     raw_operations = _transform_rebalance_data_into_operations(rebalance_data, fiat_asset)
     default_operations = exchange.get_exchange_valid_operations(raw_operations)
     default_fees = exchange.compute_fees(default_operations, fiat_asset=fiat_asset)
+    default_cost_average_per_operation = default_fees / len(default_operations)
 
-    # while True:
-    #     # TODO las conversiones han de producirse aquí.
-    #     #  Tenemos que conseguir rebalanceo reduciendo final_fees por debajo de default_fees
-    #     raw_buy_operations, raw_sell_operations = _split_buy_and_sell_operations(raw_operations)
-    #
-    #     converted_operations = raw_sell_operations + raw_buy_operations
-    #     final_operations = exchange.get_exchange_valid_operations(converted_operations)
-    #     final_fees = exchange.compute_fees(final_operations, fiat_asset=fiat_asset)
-    #     if final_fees < default_fees:
-    #         break
+    raw_buy_operations, raw_sell_operations = _split_buy_and_sell_operations(raw_operations)
+
+    # first we extract valid quote_assets for this exchange
+    quote_assets = _get_quote_assets(raw_buy_operations, raw_sell_operations)
+
+    # order from greater to lower
+    raw_buy_operations = sorted(raw_buy_operations, key=lambda op: op.quote_amount, reverse=True)
+    raw_sell_operations = sorted(raw_sell_operations, key=lambda op: op.quote_amount, reverse=True)
+
+    text_raw_sell_operations = '\n'.join([str(op) for op in raw_sell_operations])
+    text_raw_buy_operations = '\n'.join([str(op) for op in raw_buy_operations])
+    print(f'--- SELL ---\n{text_raw_sell_operations}\n')
+    print(f'--- BUY ---\n{text_raw_buy_operations}\n')
+    print(f'Default fees: {default_fees}')
+
+    # TODO al emparejar, necesitamos NO ANULAR un asset al emparejarse. Sólo se anula si su amount disponible es negativo
+    pairs = []
+    for buy_operation in raw_buy_operations:
+        if buy_operation in [pair[0] for pair in pairs]:
+            continue
+        most_similar_sell = None
+        for sell_operation in raw_sell_operations:
+            if sell_operation in [pair[1] for pair in pairs]:
+                continue
+            if buy_operation.base_currency in quote_assets and sell_operation.base_currency in quote_assets:
+                continue
+            if buy_operation.base_currency not in quote_assets and sell_operation.base_currency not in quote_assets:
+                continue
+            if not exchange.exchange_pair_exist(buy_operation.base_currency, sell_operation.base_currency) and \
+                    not exchange.exchange_pair_exist(sell_operation.base_currency, buy_operation.base_currency):
+                continue
+            if most_similar_sell is None:
+                most_similar_sell = sell_operation
+            else:
+                current_sim = number_similarity(buy_operation.quote_amount, sell_operation.quote_amount)
+                current_best_sim = number_similarity(buy_operation.quote_amount, most_similar_sell.quote_amount)
+                if current_sim > current_best_sim:
+                    most_similar_sell = sell_operation
+        if most_similar_sell is not None:
+            pairs.append((buy_operation, most_similar_sell))
+
+    # then add pending Operations not referenced by this pairs.
+    converted_operations = []
+    for buy_operation in raw_buy_operations:
+        if buy_operation in [pair[0] for pair in pairs]:
+            continue
+        converted_operations.append(buy_operation)
+    for sell_operation in raw_sell_operations:
+        if sell_operation in [pair[1] for pair in pairs]:
+            continue
+        converted_operations.append(sell_operation)
+
+    # now we need to convert each pair in pairs, into a single Operation instance.
+    for buy_operation, sell_operation in pairs:
+        print(f'PAIRED: {buy_operation} {sell_operation}')
+    for converted_operation in converted_operations:
+        print(f'ALONE OPERATION: {converted_operation}')
+
+    for buy_operation, sell_operation in pairs:
+        if sell_operation.base_currency in quote_assets:
+            # SELL 5.86387262601329 BUSD of BTC
+            # BUY 5.260690802593842 BUSD of LINK
+            base_asset = buy_operation.base_currency
+            quote_asset = sell_operation.base_currency
+
+            # base_asset = LINK, quote_asset = BTC --> LINKBTC
+            # necesitamos VENDER el amount es en BTC
+            minimum_fiat = min([buy_operation.quote_amount, sell_operation.quote_amount])
+            quote_price = exchange.get_asset_price(quote_asset, fiat_asset, instant=now)
+            operation = Operation(
+                pair=f'{base_asset}/{quote_asset}',
+                type=Operation.TYPE_BUY,
+                quote_amount=minimum_fiat / quote_price
+            )
+            converted_operations.append(operation)
+            print(f'Converted:\nPAIR: {buy_operation} {sell_operation}\nINTO: {operation}')
+
+        elif buy_operation.base_currency in quote_assets:
+            # BUY 5.86387262601329 BUSD of BTC
+            # SELL 5.260690802593842 BUSD of LINK
+            base_asset = sell_operation.base_currency
+            quote_asset = buy_operation.base_currency
+
+            # base_asset = LINK, quote_asset = BTC --> LINKBTC
+            # necesitamos COMPRAR el amount es en BTC
+
+            minimum_fiat = min([buy_operation.quote_amount, sell_operation.quote_amount])
+            quote_price = exchange.get_asset_price(quote_asset, fiat_asset, instant=now)
+            operation = Operation(
+                pair=f'{base_asset}/{quote_asset}',
+                type=Operation.TYPE_BUY,
+                quote_amount=minimum_fiat / quote_price
+            )
+            converted_operations.append(operation)
+            print(f'Converted:\nPAIR: {buy_operation} {sell_operation}\nINTO: {operation}')
+
+    # to finalize this, get_exchange_valid_operations will return the valid ones.
+    final_operations = exchange.get_exchange_valid_operations(converted_operations)
+    final_fees = exchange.compute_fees(final_operations, fiat_asset=fiat_asset)
+    number_of_converted_operations = 0
+    for op in final_operations:
+        if op.quote_currency != fiat_asset:
+            number_of_converted_operations += 2
+        else:
+            number_of_converted_operations += 1
+
+    converted_cost_average_per_operation = final_fees / number_of_converted_operations
+    print(f'Default average fee per operation: {default_cost_average_per_operation}')
+    print(f'Converted average fee per operation: {converted_cost_average_per_operation}')
+
+    import ipdb; ipdb.set_trace(context=10)
+
+    if default_cost_average_per_operation > converted_cost_average_per_operation:
+        import ipdb; ipdb.set_trace(context=10)
 
     # TODO show summary to user
     # if with_confirmation or not quiet:
@@ -66,6 +166,18 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     # Obsolete
     # rebalance_execution(crypto_assets, fiat_asset, fiat_decimals, current_fiat_balance, rebalance_data, now,
     #                     with_confirmation, quiet)
+
+
+def _get_quote_assets(buy_operations, sell_operations):
+    exchange: AbstractExchange = dependency_dispatcher.request_implementation(AbstractExchange)
+    quote_assets = set()
+    for buy_operation in buy_operations:
+        for sell_operation in sell_operations:
+            if exchange.exchange_pair_exist(buy_operation.base_currency, sell_operation.base_currency):
+                quote_assets.add(sell_operation.base_currency)
+            if exchange.exchange_pair_exist(sell_operation.base_currency, buy_operation.base_currency):
+                quote_assets.add(buy_operation.base_currency)
+    return quote_assets
 
 
 def _split_buy_and_sell_operations(operations):
@@ -156,6 +268,11 @@ def _build_summary(operations: List[Operation]):
                 row.append(f'SELL {fiat_asset} {abs(round(diff, fiat_decimals))}')
         summary.append(row)
     return summary
+
+
+def number_similarity(n1, n2):
+    ns = [n1, n2]
+    return min(ns) / max(ns)
 
 
 # def rebalance_execution(crypto_assets, fiat_asset, fiat_decimals, current_fiat_balance, rebalance_data, now,

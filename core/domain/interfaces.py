@@ -29,6 +29,9 @@ class AbstractExchange:
     def execute_operations(self, operations: List[Operation], **kwargs):
         raise NotImplementedError
 
+    def exchange_pair_exist(self, base_asset, quote_asset) -> bool:
+        raise NotImplementedError
+
 
 class AbstractUserInterface:
     def show_rebalance_summary(self, summary: list, total_balance: str):

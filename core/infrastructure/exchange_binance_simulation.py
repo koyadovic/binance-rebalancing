@@ -136,6 +136,7 @@ class BinanceSimulationExchange(BinanceExchange):
                     print('!!!!!!!!!!!!! NO SE PUEDE VENDER !!!!!!!!!!!!!')
                     return
 
+                # TODO toma 0.995 como el fee
                 base_balance -= quote_amount / avg_price
                 quote_amount *= 0.999  # binance fee
                 quote_balance += quote_amount
