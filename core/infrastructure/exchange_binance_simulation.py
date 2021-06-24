@@ -153,3 +153,7 @@ class BinanceSimulationExchange(AbstractExchange):
                 contents = f.read()
             self._exchange_info = {symbol_data['symbol']: symbol_data for symbol_data in json.loads(contents)['symbols']}
         return self._exchange_info
+
+    @classmethod
+    def _fix_amount_by_step_size(cls, amount, step_size):
+        return round(amount // step_size * step_size, 8)

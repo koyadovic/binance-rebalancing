@@ -71,3 +71,16 @@ class BinanceExchange(AbstractExchange):
             response = requests.get('https://api.binance.com/api/v1/exchangeInfo')
             self._exchange_info = {symbol_data['symbol']: symbol_data for symbol_data in response.json()['symbols']}
         return self._exchange_info
+
+    @classmethod
+    def _fix_amount_by_step_size(cls, amount, step_size):
+        # if step_size is 5, 99 will be converted to 95.0, which is the more conservative result.
+
+        # If 99 with step_size of 5 need to be converted to 100,
+        # amount // step_size could be changed to round(amount / step_size) before multiplying it by step_size again
+
+        # the round(amount, 8) is to fix Python problems when amount // step_size * step_size
+        # results in something like 99.0000000000000001.
+        # round(99.0000000000000001, 8) results in 99.0 which is the right result
+        # round(99.2200000000000001, 8) results in 99.22 which is the right result again
+        return round(amount // step_size * step_size, 8)
