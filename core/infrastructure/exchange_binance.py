@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 import requests
 
@@ -104,7 +104,7 @@ class BinanceExchange(AbstractExchange):
             if valid_operation:
                 result_operations.append(cloned_operation)
             else:
-                # print(f'Operation {operation} was discarded: {reason}')
+                print(f'Operation {operation} was discarded: {reason}')
                 pass
 
         return result_operations
