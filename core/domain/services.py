@@ -4,9 +4,13 @@ import pytz
 
 from core.domain.distribution import Distribution
 from core.domain.interfaces import AbstractExchange, AbstractUserInterface
-from core.domain.rebalancing_referees import AbstractRebalancingReferee
 from shared.domain.dependencies import dependency_dispatcher
 from shared.domain.event_dispatcher import event_dispatcher
+
+
+def number_similarity(n1, n2):
+    ns = [n1, n2]
+    return min(ns) / max(ns)
 
 
 def rebalance(crypto_assets: list = None, fiat_asset: str = None,
@@ -19,15 +23,8 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     # dependencies
     user_interface: AbstractUserInterface = dependency_dispatcher.request_implementation(AbstractUserInterface)
     exchange: AbstractExchange = dependency_dispatcher.request_implementation(AbstractExchange)
-    rebalancing_referee: AbstractRebalancingReferee = dependency_dispatcher.request_implementation(AbstractRebalancingReferee)
 
     compiled_data, current_fiat_balance, total_balance = _get_compiled_balances(crypto_assets, fiat_asset, now)
-
-    # Decide to rebalance or to not rebalance
-    prices = {asset: data['avg_price'] for asset, data in compiled_data.items()}
-    if not rebalancing_referee.should_rebalance(now, prices):
-        return
-
     summary, rebalance, do_something = _compute_summary_and_rebalancing(crypto_assets, exposure, fiat_asset,
                                                                         fiat_decimals, compiled_data,
                                                                         total_balance, distribution, fiat_untouched)
@@ -36,35 +33,6 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     if with_confirmation or not quiet:
         total_balance_str = f'{fiat_asset} {round(total_balance, fiat_decimals)}'
         user_interface.show_rebalance_summary(summary, total_balance_str)
-
-    """
-    Acción reacción, cada venta tiene que tener una compra aparejada.
-    Hay que mapear qué hay que vender para saber qué hay que comprar.
-    En este caso ya se podría ver si existe conversión directa entre assets.
-    
-    - Empareja por similitud
-    - Busca la operación con el número más bajo de los dos similares
-    - Si existe conversión directa, se hace
-    
-    Sólo se producen operaciones emparejadas, con lo que tendríamos englobado lo de abajo.
-    """
-
-    # TODO reactivate this
-    # We need to check if there is any buy, if not, don't do anything
-    # any_buy = False
-    # sorted_cryptos = sorted([k for k in rebalance.keys()], key=lambda key: rebalance[key]['diff'])
-    # for crypto_asset in sorted_cryptos:
-    #     data = rebalance[crypto_asset]
-    #     diff = data['diff']
-    #     if diff > 0:
-    #         continue
-    #     if abs(diff) >= 10:
-    #         any_buy = True
-    #         break
-    # if not any_buy:
-    #     if not quiet:
-    #         user_interface.show_message(f'No buy operations, no doing nothing ...')
-    #     return
 
     # if there is nothing to do, return
     if not do_something:
@@ -134,9 +102,6 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
             except Exception as e:
                 user_interface.show_message(f'! Warning, error buying {crypto_asset}: {e}')
                 continue
-
-    # after rebalancing
-    rebalancing_referee.rebalanced(now, prices)
 
     # post operation emit events with updated balances
     compiled_data, current_fiat_balance, total_balance = _get_compiled_balances(crypto_assets, fiat_asset, now)
