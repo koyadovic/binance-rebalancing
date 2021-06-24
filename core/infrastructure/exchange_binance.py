@@ -109,6 +109,7 @@ class BinanceExchange(AbstractExchange):
         return result_operations
 
     def execute_operations(self, operations: List[Operation], **kwargs):
+        # TODO toma 0.995 como el fee
         for operation in operations:
             if operation.type == Operation.TYPE_SELL:
                 self.place_sell_order(
@@ -116,12 +117,14 @@ class BinanceExchange(AbstractExchange):
                     operation.quote_currency,
                     operation.quote_amount,
                 )
+                print(f'Executed -> {operation}')
             elif operation.type == Operation.TYPE_BUY:
                 self.place_buy_order(
                     operation.base_currency,
                     operation.quote_currency,
                     operation.quote_amount,
                 )
+                print(f'Executed -> {operation}')
 
     @execution_with_attempts(attempts=3, wait_seconds=5)
     def _get_exchange_info(self):
