@@ -149,7 +149,7 @@ def _processing_function(starting_date, end_date, current_assets, exposure, peri
             hodl_balances = {fiat_asset: 0.0}
             for asset in current_assets:
                 fiat_for_asset = (distributor.assign_percentage(asset) / 100) * initial_fiat_invest
-                asset_price = exchange.get_asset_fiat_price(asset, fiat_asset, instant=now)
+                asset_price = exchange.get_asset_price(asset, fiat_asset, instant=now)
                 # 0.999 is for binance fees
                 hodl_balances[asset] = (fiat_for_asset * 0.999) / asset_price
             have_hodl_balances = True
@@ -194,7 +194,7 @@ def compute_fiat_balance(balances, now):
     for asset, balance in balances.items():
         if asset == fiat_asset:
             continue
-        total_fiat_balance += exchange.get_asset_fiat_price(asset, fiat_asset, instant=now) * balance
+        total_fiat_balance += exchange.get_asset_price(asset, fiat_asset, instant=now) * balance
     return total_fiat_balance
 
 

@@ -63,7 +63,7 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
             if with_confirmation or not quiet:
                 user_interface.show_message(f'> Selling {fiat_asset} {quantity} of {crypto_asset}')
             required_amount_sold += abs(diff)
-            exchange.place_fiat_sell_order(crypto_asset, quantity, fiat_asset, avg_price=avg_price)
+            exchange.place_sell_order(crypto_asset, fiat_asset, quantity, avg_price=avg_price)
             real_amount_sold += abs(diff)
         except Exception as e:
             user_interface.show_message(f'! Warning, error selling {crypto_asset}: {e}')
@@ -99,7 +99,7 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
 
                 if quantity > fiat_balance:
                     quantity = fiat_balance
-                exchange.place_fiat_buy_order(crypto_asset, quantity, fiat_asset, avg_price=avg_price)
+                exchange.place_buy_order(crypto_asset, fiat_asset, quantity, avg_price=avg_price)
                 break
 
             except Exception as e:
@@ -129,7 +129,7 @@ def _get_compiled_balances(crypto_assets, fiat_asset, instant):
     total_balance = current_fiat_balance
     for crypto_asset in crypto_assets:
         balance = exchange.get_asset_balance(asset=crypto_asset)
-        fiat_price = exchange.get_asset_fiat_price(asset=crypto_asset, fiat_asset=fiat_asset, instant=instant)
+        fiat_price = exchange.get_asset_price(base_asset=crypto_asset, quote_asset=fiat_asset, instant=instant)
         total_balance += balance * fiat_price
         compiled_data[crypto_asset] = {
             'balance': balance,

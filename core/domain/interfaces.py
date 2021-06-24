@@ -10,17 +10,23 @@ class AbstractExchange:
         # and so on
         raise NotImplementedError
 
-    def get_asset_fiat_price(self, asset: str, fiat_asset: str, instant=None) -> float:
+    def get_asset_price(self, base_asset: str, quote_asset: str, instant=None) -> float:
         # if asset is BTC and fiat_asset is USDT, must return the BTC price expressed as USDT
         raise NotImplementedError
 
-    def place_fiat_buy_order(self, crypto: str, quantity: float, fiat_asset: str, **kwargs):
+    def place_buy_order(self, base_asset: str, quote_asset: str, quote_amount: float, **kwargs):
         raise NotImplementedError
 
-    def place_fiat_sell_order(self, crypto: str, quantity: float, fiat_asset: str, **kwargs):
+    def place_sell_order(self, base_asset: str, quote_asset: str, quote_amount: float, **kwargs):
         raise NotImplementedError
 
     def compute_fees(self, operations: List[Operation], fiat_asset: str, **kwargs) -> float:
+        raise NotImplementedError
+
+    def fix_operations_for_the_exchange(self, operations: List[Operation]) -> List[Operation]:
+        raise NotImplementedError
+
+    def execute_operations(self, operations: List[Operation]):
         raise NotImplementedError
 
 
