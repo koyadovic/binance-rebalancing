@@ -30,7 +30,7 @@ class Operation:
             raise ValueError(f'Invalid operation amount. Only positive values are allowed')
 
     def __str__(self):
-        return f'{self.type} {self.quote_currency}{self.quote_amount} of {self.base_currency}'
+        return f'{self.type} {self.quote_amount} {self.quote_currency} of {self.base_currency}'
 
     def __repr__(self):
         return self.__str__()

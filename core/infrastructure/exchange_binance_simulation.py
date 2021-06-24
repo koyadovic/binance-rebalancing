@@ -119,11 +119,10 @@ class BinanceSimulationExchange(BinanceExchange):
             'volume': float(data_item[5]),
         }
 
-    def execute_operations(self, operations: List[Operation], avg_prices=None, **kwargs):
-        # TODO avg_prices must be a dict like {'ADA/BTC': ada_btc_price}
-        # TODO esto hay que revisarlo.
-        #  Quizá para simulaciones lo mejor sea pasar los precios en BUSD o USDT y hacer conversiones aquí.
-        #  Binance es posible que no tenga un histórico tan amplio de precios entre pares
+    def execute_operations(self, operations: List[Operation], fiat_asset=None, **kwargs):
+        # TODO si en lugar de avg_prices nos pasan el fiat_asset, podríamos consultar precios nosotros
+        #  y realizar las conversiones oportunas
+
         for operation in operations:
             avg_price = avg_prices[operation.pair]
 
