@@ -1,3 +1,6 @@
+from typing import List
+
+from core.domain.entities import Operation
 from core.domain.interfaces import AbstractExchange
 from binance import Client
 
@@ -22,7 +25,7 @@ class BinanceExchange(AbstractExchange):
         return float(self.client.get_asset_balance(asset=asset)['free'])
 
     @execution_with_attempts(attempts=3, wait_seconds=5)
-    def get_asset_fiat_price(self, asset: str, fiat_asset: str, instant=None) -> float:
+    def get_asset_fiat_price(self, asset: str, fiat_asset: str, **kwargs) -> float:
         return float(self.client.get_avg_price(symbol=f'{asset}{fiat_asset}')['price'])
 
     @execution_with_attempts(attempts=3, wait_seconds=5)
@@ -40,3 +43,13 @@ class BinanceExchange(AbstractExchange):
             symbol=f'{crypto}{fiat_asset}',
             quoteOrderQty=quantity
         )
+
+    def compute_fees(self, operations: List[Operation], fiat_asset: str, **kwargs) -> float:
+        total_fees = 0.0
+        for operation in operations:
+            if operation.counter_currency == fiat_asset:
+                total_fees += operation.counter_amount * (0.1 / 100.0)
+            else:
+                counter_fiat_price = self.get_asset_fiat_price(operation.counter_currency, fiat_asset, **kwargs)
+                total_fees += (operation.counter_amount / counter_fiat_price) * (0.1 / 100.0)
+        return total_fees

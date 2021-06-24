@@ -1,6 +1,9 @@
 import json
 import os
 from datetime import datetime, timedelta
+from typing import List
+
+from core.domain.entities import Operation
 from core.domain.interfaces import AbstractExchange
 from binance import Client
 from shared.domain.decorators import execution_with_attempts
@@ -125,3 +128,13 @@ class BinanceSimulationExchange(AbstractExchange):
             'close': float(data_item[4]),
             'volume': float(data_item[5]),
         }
+
+    def compute_fees(self, operations: List[Operation], fiat_asset: str, **kwargs) -> float:
+        total_fees = 0.0
+        for operation in operations:
+            if operation.counter_currency == fiat_asset:
+                total_fees += operation.counter_amount * (0.1 / 100.0)
+            else:
+                counter_fiat_price = self.get_asset_fiat_price(operation.counter_currency, fiat_asset, **kwargs)
+                total_fees += (operation.counter_amount / counter_fiat_price) * (0.1 / 100.0)
+        return total_fees

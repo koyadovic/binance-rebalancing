@@ -1,3 +1,8 @@
+from typing import List
+
+from core.domain.entities import Operation
+
+
 class AbstractExchange:
     def get_asset_balance(self, asset: str) -> float:
         # if asset is BUSD, must return the amount of BUSD we have
@@ -13,6 +18,9 @@ class AbstractExchange:
         raise NotImplementedError
 
     def place_fiat_sell_order(self, crypto: str, quantity: float, fiat_asset: str, **kwargs):
+        raise NotImplementedError
+
+    def compute_fees(self, operations: List[Operation], fiat_asset: str, **kwargs) -> float:
         raise NotImplementedError
 
 
