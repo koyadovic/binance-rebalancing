@@ -6,7 +6,7 @@ import pytz
 
 from core.domain.distribution import Distribution
 from core.domain.entities import Operation
-from core.domain.interfaces import AbstractExchange, AbstractUserInterface
+from core.domain.interfaces import AbstractExchange, AbstractUserInterface, CannotProcessOperation
 from shared.domain.dependencies import dependency_dispatcher
 from shared.domain.event_dispatcher import event_dispatcher
 
@@ -41,16 +41,17 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     for buy_operation in raw_buy_operations:
         if buy_operation.base_currency not in deviations:
             deviations[buy_operation.base_currency] = -buy_operation.quote_amount
-        else:
-            if deviations[buy_operation.base_currency] >= 0:
-                continue
+    for sell_operation in raw_sell_operations:
+        if sell_operation.base_currency not in deviations:
+            deviations[sell_operation.base_currency] = sell_operation.quote_amount
+
+    for buy_operation in raw_buy_operations:
+        if deviations[buy_operation.base_currency] >= 0:
+            continue
         most_similar_sell = None
         for sell_operation in raw_sell_operations:
-            if sell_operation.base_currency not in deviations:
-                deviations[sell_operation.base_currency] = sell_operation.quote_amount
-            else:
-                if deviations[sell_operation.base_currency] <= 0:
-                    continue
+            if deviations[sell_operation.base_currency] <= 0:
+                continue
             if buy_operation.base_currency in quote_assets and sell_operation.base_currency in quote_assets:
                 continue
             if buy_operation.base_currency not in quote_assets and sell_operation.base_currency not in quote_assets:
@@ -59,9 +60,6 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
                     not exchange.exchange_pair_exist(sell_operation.base_currency, buy_operation.base_currency):
                 continue
 
-            # TODO antes de hacer el par, nos toca saber si hay balance para parearlo
-            # TODO NO!!! si se pide rebalancear algo sin fondos, estará bien ??
-            #  planta ipdb en el exchange
             if most_similar_sell is None:
                 most_similar_sell = sell_operation
             else:
@@ -83,10 +81,12 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
         if buy_operation in [pair[0] for pair in pairs]:
             continue
         converted_operations.append(buy_operation)
+        deviations[buy_operation.base_currency] += buy_operation.quote_amount
     for sell_operation in raw_sell_operations:
         if sell_operation in [pair[1] for pair in pairs]:
             continue
         converted_operations.append(sell_operation)
+        deviations[sell_operation.base_currency] -= sell_operation.quote_amount
 
     # now we need to convert each pair in pairs, into a single Operation instance.
     for buy, sell in pairs:
@@ -121,7 +121,7 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
         try:
             converted_operations.append(valid[0])
         except IndexError:
-            # No es válido la operación única. Revierte deviations con buy and sell
+            # Operación única no válida. Revierte deviations con buy and sell
             deviations[sell.base_currency] += minimum_fiat
             deviations[buy.base_currency] -= minimum_fiat
 
@@ -129,9 +129,16 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     final_operations = exchange.get_exchange_valid_operations(converted_operations)
     for op in final_operations:
         if op.base_currency in deviations:
-            del deviations[op.base_currency]
+            if op.type == Operation.TYPE_BUY and deviations[op.base_currency] > 0:
+                del deviations[op.base_currency]
+            elif op.type == Operation.TYPE_SELL and deviations[op.base_currency] < 0:
+                del deviations[op.base_currency]
         if op.quote_currency in deviations:
-            del deviations[op.quote_currency]
+            if op.type == Operation.TYPE_BUY and deviations[op.quote_currency] > 0:
+                del deviations[op.quote_currency]
+            elif op.type == Operation.TYPE_SELL and deviations[op.quote_currency] < 0:
+                del deviations[op.quote_currency]
+
     for asset, deviation in deviations.items():
         if deviation < 0:
             type_ = Operation.TYPE_BUY
@@ -149,6 +156,9 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     )
     final_fees = exchange.compute_fees(final_operations, fiat_asset=fiat_asset, instant=now)
 
+    # TODO en simulaciones, imprime fees, imprime operaciones originales y convertidas
+    #  y también balances del exchange y planta ipdb, para ver rebalanceo tras rebalanceo qué está haciendo
+
     # show summary to user
     if with_confirmation or not quiet:
         user_interface.show_table(
@@ -162,7 +172,7 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     #     import ipdb; ipdb.set_trace(context=10)
 
     # if there is nothing to do, return
-    if len(default_operations) == 0:
+    if len(final_operations) == 0:
         return
 
     # request confirmation, there are pending actions
@@ -171,7 +181,11 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
         if not confirmed:
             return
 
-    exchange.execute_operations(default_operations, fiat_asset=fiat_asset, instant=now)
+    try:
+        exchange.execute_operations(final_operations, fiat_asset=fiat_asset, instant=now)
+    except CannotProcessOperation as e:
+        print(e, e.operation)
+        import ipdb; ipdb.set_trace(context=10)
 
 
 def _get_quote_assets(buy_operations, sell_operations):

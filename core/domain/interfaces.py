@@ -3,6 +3,12 @@ from typing import List
 from core.domain.entities import Operation
 
 
+class CannotProcessOperation(Exception):
+    def __init__(self, text, operation=None):
+        super().__init__(text)
+        self.operation = operation
+
+
 class AbstractExchange:
     def get_asset_balance(self, asset: str) -> float:
         # if asset is BUSD, must return the amount of BUSD we have
