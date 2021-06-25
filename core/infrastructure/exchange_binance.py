@@ -55,7 +55,7 @@ class BinanceExchange(AbstractExchange):
             else:
                 counter_fiat_price = self.get_asset_price(operation.quote_currency, fiat_asset, **kwargs)
                 total_fees += (operation.quote_amount / counter_fiat_price) * (0.1 / 100.0)
-        return total_fees
+        return round(total_fees, 8)
 
     def get_exchange_valid_operations(self, operations: List[Operation]) -> List[Operation]:
         exchange_info = self._get_exchange_info()
@@ -104,7 +104,7 @@ class BinanceExchange(AbstractExchange):
             if valid_operation:
                 result_operations.append(cloned_operation)
             else:
-                print(f'Operation {operation} was discarded: {reason}')
+                # print(f'Operation {operation} was discarded: {reason}')
                 pass
 
         return result_operations
@@ -117,14 +117,14 @@ class BinanceExchange(AbstractExchange):
                     operation.quote_currency,
                     operation.quote_amount,
                 )
-                print(f'Executed -> {operation}')
+                # print(f'Executed -> {operation}')
             elif operation.type == Operation.TYPE_BUY:
                 self.place_buy_order(
                     operation.base_currency,
                     operation.quote_currency,
                     operation.quote_amount,
                 )
-                print(f'Executed -> {operation}')
+                # print(f'Executed -> {operation}')
 
     def exchange_pair_exist(self, base_asset, quote_asset) -> bool:
         return f'{base_asset}{quote_asset}' in self._get_exchange_info()

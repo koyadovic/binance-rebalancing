@@ -34,7 +34,7 @@ class AbstractExchange:
 
 
 class AbstractUserInterface:
-    def show_rebalance_summary(self, summary: list, total_balance: str):
+    def show_table(self, headers: list, rows: list, **additional_data):
         raise NotImplementedError
 
     def request_confirmation(self, text: str) -> bool:

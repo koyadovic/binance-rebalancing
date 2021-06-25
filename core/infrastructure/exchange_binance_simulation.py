@@ -122,8 +122,15 @@ class BinanceSimulationExchange(BinanceExchange):
     def execute_operations(self, operations: List[Operation], fiat_asset=None, **kwargs):
         # TODO si en lugar de avg_prices nos pasan el fiat_asset, podríamos consultar precios nosotros
         #  y realizar las conversiones oportunas
+        """
+        class Operation:
+            pair: str
+            type: str
+            quote_amount: float
+        """
 
         for operation in operations:
+
             avg_price = avg_prices[operation.pair]
 
             quote_amount = operation.quote_amount

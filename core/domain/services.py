@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from typing import List
 
@@ -28,37 +29,27 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     raw_operations = _transform_rebalance_data_into_operations(rebalance_data, fiat_asset)
     default_operations = exchange.get_exchange_valid_operations(raw_operations)
     default_fees = exchange.compute_fees(default_operations, fiat_asset=fiat_asset)
-    default_cost_average_per_operation = default_fees / len(default_operations)
 
     raw_buy_operations, raw_sell_operations = _split_buy_and_sell_operations(raw_operations)
 
     # first we extract valid quote_assets for this exchange
     quote_assets = _get_quote_assets(raw_buy_operations, raw_sell_operations)
 
-    # order from greater to lower
-    raw_buy_operations = sorted(raw_buy_operations, key=lambda op: op.quote_amount, reverse=True)
-    raw_sell_operations = sorted(raw_sell_operations, key=lambda op: op.quote_amount, reverse=True)
-
-    text_raw_sell_operations = '\n'.join([str(op) for op in raw_sell_operations])
-    text_raw_buy_operations = '\n'.join([str(op) for op in raw_buy_operations])
-    print(f'--- SELL ---\n{text_raw_sell_operations}\n')
-    print(f'--- BUY ---\n{text_raw_buy_operations}\n')
-    print(f'Default fees: {default_fees}')
-
+    # try to pair operations
     pairs = []
     deviations = {}
     for buy_operation in raw_buy_operations:
         if buy_operation.base_currency not in deviations:
             deviations[buy_operation.base_currency] = -buy_operation.quote_amount
         else:
-            if deviations[buy_operation.base_currency] > 0:
+            if deviations[buy_operation.base_currency] >= 0:
                 continue
         most_similar_sell = None
         for sell_operation in raw_sell_operations:
             if sell_operation.base_currency not in deviations:
                 deviations[sell_operation.base_currency] = sell_operation.quote_amount
             else:
-                if deviations[sell_operation.base_currency] < 0:
+                if deviations[sell_operation.base_currency] <= 0:
                     continue
             if buy_operation.base_currency in quote_assets and sell_operation.base_currency in quote_assets:
                 continue
@@ -70,111 +61,100 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
             if most_similar_sell is None:
                 most_similar_sell = sell_operation
             else:
-
                 current_sim = number_similarity(buy_operation.quote_amount, sell_operation.quote_amount)
                 current_best_sim = number_similarity(buy_operation.quote_amount, most_similar_sell.quote_amount)
 
                 if current_sim > current_best_sim:
                     most_similar_sell = sell_operation
+
         if most_similar_sell is not None:
-            deviations[most_similar_sell.base_currency] -= most_similar_sell.quote_amount
-            deviations[buy_operation.base_currency] += buy_operation.quote_amount
+            minimum_fiat = min([most_similar_sell.quote_amount, buy_operation.quote_amount])
+            deviations[most_similar_sell.base_currency] -= minimum_fiat
+            deviations[buy_operation.base_currency] += minimum_fiat
             pairs.append((buy_operation, most_similar_sell))
 
     # then add pending Operations not referenced by this pairs.
     converted_operations = []
     for buy_operation in raw_buy_operations:
         if buy_operation in [pair[0] for pair in pairs]:
-            print(f'Ignoring {buy_operation} as it is in pairs')
             continue
         converted_operations.append(buy_operation)
     for sell_operation in raw_sell_operations:
         if sell_operation in [pair[1] for pair in pairs]:
-            print(f'Ignoring {sell_operation} as it is in pairs')
             continue
         converted_operations.append(sell_operation)
 
     # now we need to convert each pair in pairs, into a single Operation instance.
-    for buy_operation, sell_operation in pairs:
-        print(f'PAIRED: {buy_operation} {sell_operation}')
-    for converted_operation in converted_operations:
-        print(f'ALONE OPERATION: {converted_operation}')
+    for buy, sell in pairs:
+        buy_operation = buy.clone()
+        sell_operation = sell.clone()
 
-    for buy_operation, sell_operation in pairs:
+        # ñapa
+        minimum_fiat = min([buy_operation.quote_amount, sell_operation.quote_amount])
+        if buy_operation.quote_amount == minimum_fiat:
+            sell_operation.quote_amount = minimum_fiat
+        else:
+            buy_operation.quote_amount = minimum_fiat
+
         if sell_operation.base_currency in quote_assets:
-            # SELL 5.86387262601329 BUSD of BTC
-            # BUY 5.260690802593842 BUSD of LINK
             base_asset = buy_operation.base_currency
             quote_asset = sell_operation.base_currency
-
-            # base_asset = LINK, quote_asset = BTC --> LINKBTC
-            # necesitamos VENDER el amount es en BTC
-            minimum_fiat = min([buy_operation.quote_amount, sell_operation.quote_amount])
-            quote_price = exchange.get_asset_price(quote_asset, fiat_asset, instant=now)
-            operation = Operation(
-                pair=f'{base_asset}/{quote_asset}',
-                type=Operation.TYPE_BUY,
-                quote_amount=minimum_fiat / quote_price
-            )
-            valid = exchange.get_exchange_valid_operations([operation])
-            try:
-                converted_operations.append(valid[0])
-                print(f'Converted:\nPAIR: {buy_operation} {sell_operation}\nINTO: {operation}')
-            except IndexError:
-                converted_operations.append(buy_operation)
-                converted_operations.append(sell_operation)
-
+            operation_type = Operation.TYPE_BUY
         elif buy_operation.base_currency in quote_assets:
-            # BUY 5.86387262601329 BUSD of BTC
-            # SELL 5.260690802593842 BUSD of LINK
             base_asset = sell_operation.base_currency
             quote_asset = buy_operation.base_currency
+            operation_type = Operation.TYPE_SELL
+        else:
+            continue
 
-            # base_asset = LINK, quote_asset = BTC --> LINKBTC
-            # necesitamos COMPRAR el amount es en BTC
+        quote_price = exchange.get_asset_price(quote_asset, fiat_asset, instant=now)
+        operation = Operation(
+            pair=f'{base_asset}/{quote_asset}',
+            type=operation_type,
+            quote_amount=minimum_fiat / quote_price
+        )
+        valid = exchange.get_exchange_valid_operations([operation])
+        try:
+            converted_operations.append(valid[0])
+        except IndexError:
+            # No es válido la operación única. Revierte deviations con buy and sell
+            deviations[sell.base_currency] += minimum_fiat
+            deviations[buy.base_currency] -= minimum_fiat
 
-            minimum_fiat = min([buy_operation.quote_amount, sell_operation.quote_amount])
-            quote_price = exchange.get_asset_price(quote_asset, fiat_asset, instant=now)
-            operation = Operation(
-                pair=f'{base_asset}/{quote_asset}',
-                type=Operation.TYPE_BUY,
-                quote_amount=minimum_fiat / quote_price
-            )
-            valid = exchange.get_exchange_valid_operations([operation])
-            try:
-                converted_operations.append(valid[0])
-                print(f'Converted:\nPAIR: {buy_operation} {sell_operation}\nINTO: {operation}')
-            except IndexError:
-                converted_operations.append(buy_operation)
-                converted_operations.append(sell_operation)
+    # repasa deviations y añade operaciones que aún no existan
+    final_operations = exchange.get_exchange_valid_operations(converted_operations)
+    for op in final_operations:
+        if op.base_currency in deviations:
+            del deviations[op.base_currency]
+        if op.quote_currency in deviations:
+            del deviations[op.quote_currency]
+    for asset, deviation in deviations.items():
+        if deviation < 0:
+            type_ = Operation.TYPE_BUY
+        elif deviation > 0:
+            type_ = Operation.TYPE_SELL
+        else:
+            continue
+        final_operations.append(Operation(pair=f'{asset}/{fiat_asset}', type=type_, quote_amount=abs(deviation)))
 
     # to finalize this, get_exchange_valid_operations will return the valid ones.
-    final_operations = exchange.get_exchange_valid_operations(converted_operations)
+    final_operations = sorted(
+        exchange.get_exchange_valid_operations(final_operations),
+        key=lambda o: o.type,
+        reverse=True
+    )
     final_fees = exchange.compute_fees(final_operations, fiat_asset=fiat_asset)
-    number_of_converted_operations = 0
-    for op in final_operations:
-        if op.quote_currency != fiat_asset:
-            number_of_converted_operations += 2
-        else:
-            number_of_converted_operations += 1
 
-    converted_cost_average_per_operation = final_fees / number_of_converted_operations
-    print(f'Default average fee per operation: {default_cost_average_per_operation}')
-    print(f'Converted average fee per operation: {converted_cost_average_per_operation}')
+    # show summary to user
+    user_interface.show_table(
+        headers=['Pair', 'Operation Type', 'Amount'],
+        rows=[[op.pair, op.type, f'{op.quote_currency} {op.quote_amount}'] for op in final_operations],
+        default_FEES=f'{fiat_asset} {default_fees}',
+        final_FEES=f'{fiat_asset} {final_fees}',
+    )
 
-    print(f'Default operations: {default_operations}')
-    print(f'Final operations: {final_operations}')
-
-    import ipdb; ipdb.set_trace(context=10)
-
-    if default_cost_average_per_operation > converted_cost_average_per_operation:
+    if default_fees > final_fees or len(final_operations) > len(default_operations):
         import ipdb; ipdb.set_trace(context=10)
-
-    # TODO show summary to user
-    # if with_confirmation or not quiet:
-    #     summary = _build_summary(operations)
-    #     total_balance_str = f'{fiat_asset} {round(total_balance, fiat_decimals)}'
-    #     user_interface.show_rebalance_summary(summary, total_balance_str)
 
     # if there is nothing to do, return
     if len(default_operations) == 0:
@@ -186,7 +166,7 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
         if not confirmed:
             return
 
-    exchange.execute_operations(default_operations)
+    exchange.execute_operations(default_operations, fiat_asset=fiat_asset)
 
     # Obsolete
     # rebalance_execution(crypto_assets, fiat_asset, fiat_decimals, current_fiat_balance, rebalance_data, now,
