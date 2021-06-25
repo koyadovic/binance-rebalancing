@@ -2,6 +2,10 @@ class Operation:
     pair: str
     type: str
     quote_amount: float
+    base_currency: str
+    quote_currency: str
+
+    __slots__ = ('pair', 'type', 'quote_amount', 'base_currency', 'quote_currency')
 
     TYPE_BUY = 'BUY'
     TYPE_SELL = 'SELL'
@@ -12,14 +16,8 @@ class Operation:
         self.type = type
         self.quote_amount = quote_amount
         self._self_validation()
-
-    @property
-    def base_currency(self):
-        return self.pair.split('/')[0]
-
-    @property
-    def quote_currency(self):
-        return self.pair.split('/')[1]
+        self.base_currency = self.pair.split('/')[0]
+        self.quote_currency = self.pair.split('/')[1]
 
     def _self_validation(self):
         if '/' not in str(self.pair):

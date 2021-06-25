@@ -28,7 +28,7 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
 
     raw_operations = _transform_rebalance_data_into_operations(rebalance_data, fiat_asset)
     default_operations = exchange.get_exchange_valid_operations(raw_operations)
-    default_fees = exchange.compute_fees(default_operations, fiat_asset=fiat_asset)
+    default_fees = exchange.compute_fees(default_operations, fiat_asset=fiat_asset, instant=now)
 
     raw_buy_operations, raw_sell_operations = _split_buy_and_sell_operations(raw_operations)
 
@@ -58,6 +58,10 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
             if not exchange.exchange_pair_exist(buy_operation.base_currency, sell_operation.base_currency) and \
                     not exchange.exchange_pair_exist(sell_operation.base_currency, buy_operation.base_currency):
                 continue
+
+            # TODO antes de hacer el par, nos toca saber si hay balance para parearlo
+            # TODO NO!!! si se pide rebalancear algo sin fondos, estará bien ??
+            #  planta ipdb en el exchange
             if most_similar_sell is None:
                 most_similar_sell = sell_operation
             else:
@@ -143,18 +147,19 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
         key=lambda o: o.type,
         reverse=True
     )
-    final_fees = exchange.compute_fees(final_operations, fiat_asset=fiat_asset)
+    final_fees = exchange.compute_fees(final_operations, fiat_asset=fiat_asset, instant=now)
 
     # show summary to user
-    user_interface.show_table(
-        headers=['Pair', 'Operation Type', 'Amount'],
-        rows=[[op.pair, op.type, f'{op.quote_currency} {op.quote_amount}'] for op in final_operations],
-        default_FEES=f'{fiat_asset} {default_fees}',
-        final_FEES=f'{fiat_asset} {final_fees}',
-    )
+    if with_confirmation or not quiet:
+        user_interface.show_table(
+            headers=['Pair', 'Operation Type', 'Amount'],
+            rows=[[op.pair, op.type, f'{op.quote_currency} {op.quote_amount}'] for op in final_operations],
+            default_FEES=f'{fiat_asset} {default_fees}',
+            final_FEES=f'{fiat_asset} {final_fees}',
+        )
 
-    if default_fees > final_fees or len(final_operations) > len(default_operations):
-        import ipdb; ipdb.set_trace(context=10)
+    # if final_fees > default_fees:
+    #     import ipdb; ipdb.set_trace(context=10)
 
     # if there is nothing to do, return
     if len(default_operations) == 0:
@@ -166,22 +171,22 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
         if not confirmed:
             return
 
-    exchange.execute_operations(default_operations, fiat_asset=fiat_asset)
-
-    # Obsolete
-    # rebalance_execution(crypto_assets, fiat_asset, fiat_decimals, current_fiat_balance, rebalance_data, now,
-    #                     with_confirmation, quiet)
+    exchange.execute_operations(default_operations, fiat_asset=fiat_asset, instant=now)
 
 
 def _get_quote_assets(buy_operations, sell_operations):
     exchange: AbstractExchange = dependency_dispatcher.request_implementation(AbstractExchange)
-    quote_assets = set()
+    quote_assets = []
     for buy_operation in buy_operations:
+        if buy_operation.base_currency in quote_assets:
+            continue
         for sell_operation in sell_operations:
+            if sell_operation.base_currency in quote_assets:
+                continue
             if exchange.exchange_pair_exist(buy_operation.base_currency, sell_operation.base_currency):
-                quote_assets.add(sell_operation.base_currency)
+                quote_assets.append(sell_operation.base_currency)
             if exchange.exchange_pair_exist(sell_operation.base_currency, buy_operation.base_currency):
-                quote_assets.add(buy_operation.base_currency)
+                quote_assets.append(buy_operation.base_currency)
     return quote_assets
 
 

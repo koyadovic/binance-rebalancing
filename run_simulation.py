@@ -1,6 +1,8 @@
 import csv
 import itertools
+import logging
 import multiprocessing
+import sys
 from concurrent.futures import ProcessPoolExecutor
 from datetime import timedelta, datetime
 
@@ -10,6 +12,9 @@ from core.bootstrap import init_core_module_for_simulations
 from core.domain import services as rebalancing_services
 from core.domain.distribution import EqualDistribution
 from shared.domain.dependencies import dependency_dispatcher
+
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 assets = [
@@ -57,11 +62,12 @@ while True:
 periods = {
     '1h': timedelta(hours=1),
     '1d': timedelta(days=1),
-    '1w': timedelta(days=7),
-    '2w': timedelta(days=14),
+    # '1w': timedelta(days=7),
+    # '2w': timedelta(days=14),
 }
 
 exposures = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+exposures = [1.0]
 
 fiat_asset = 'USDT'
 fiat_decimals = 2
@@ -82,11 +88,11 @@ def main():
     # maybe we can use this data for the study
     # read activity/README.md
     # init_activity_module()
-
+    all_assets_combinations = list(get_all_assets_combinations())
     n = 0
     for starting_date, end_date, tag in simulation_dates:
         for exposure in exposures:
-            for current_assets in get_all_assets_combinations():
+            for current_assets in all_assets_combinations:
                 if len(current_assets) < 8:
                     continue
                 for period in periods.keys():
@@ -97,14 +103,14 @@ def main():
     with ProcessPoolExecutor(max_workers=multiprocessing.cpu_count() - 1) as p:
         for starting_date, end_date, tag in simulation_dates:
             for exposure in exposures:
-                for current_assets in get_all_assets_combinations():
+                for current_assets in all_assets_combinations:
                     if len(current_assets) < 8:
                         continue
                     for period in periods.keys():
-                        args = (starting_date, end_date, current_assets, exposure, period, tag, n, current_n + 1)
                         current_n += 1
-                        # future = _processing_function(*args)
-                        future = p.submit(_processing_function, *args)
+                        args = (starting_date, end_date, current_assets, exposure, period, tag, n, current_n)
+                        future = _processing_function(*args)
+                        # future = p.submit(_processing_function, *args)
                         futures.append(future)
 
     with open('simulation.csv', mode='w') as simulation_file:
@@ -115,8 +121,8 @@ def main():
             'Rebalance Profit', 'HODL Profit', 'Profit related to HODL strategy',
         ])
         for future in futures:
-            # simulation_writer.writerow(future)
-            simulation_writer.writerow(future.result())
+            simulation_writer.writerow(future)
+            # simulation_writer.writerow(future.result())
 
 
 def _processing_function(starting_date, end_date, current_assets, exposure, period, tag, n, current_n):
