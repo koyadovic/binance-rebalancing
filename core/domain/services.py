@@ -11,7 +11,7 @@ from shared.domain.dependencies import dependency_dispatcher
 from shared.domain.event_dispatcher import event_dispatcher
 
 
-logging.basicConfig(level=logging.NOTSET)
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger()
 
 
@@ -41,8 +41,6 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     # first we extract valid quote_assets for this exchange
     quote_assets = _get_quote_assets(raw_buy_operations, raw_sell_operations)
 
-    # try to pair operations
-    pairs = []
     deviations = {}
     for buy_operation in raw_buy_operations:
         if buy_operation.base_currency not in deviations:
@@ -51,6 +49,8 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
         if sell_operation.base_currency not in deviations:
             deviations[sell_operation.base_currency] = sell_operation.quote_amount
 
+    # try to pair operations
+    pairs = []
     for buy_operation in raw_buy_operations:
         if deviations[buy_operation.base_currency] >= 0:
             continue
@@ -65,15 +65,28 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
             if not exchange.exchange_pair_exist(buy_operation.base_currency, sell_operation.base_currency) and \
                     not exchange.exchange_pair_exist(sell_operation.base_currency, buy_operation.base_currency):
                 continue
-
             if most_similar_sell is None:
                 most_similar_sell = sell_operation
             else:
                 current_sim = number_similarity(buy_operation.quote_amount, sell_operation.quote_amount)
                 current_best_sim = number_similarity(buy_operation.quote_amount, most_similar_sell.quote_amount)
-
                 if current_sim > current_best_sim:
                     most_similar_sell = sell_operation
+
+        if most_similar_sell is None:
+            for sell_operation in raw_sell_operations:
+                if deviations[sell_operation.base_currency] <= 0:
+                    continue
+                if not exchange.exchange_pair_exist(buy_operation.base_currency, sell_operation.base_currency) and \
+                        not exchange.exchange_pair_exist(sell_operation.base_currency, buy_operation.base_currency):
+                    continue
+                if most_similar_sell is None:
+                    most_similar_sell = sell_operation
+                else:
+                    current_sim = number_similarity(buy_operation.quote_amount, sell_operation.quote_amount)
+                    current_best_sim = number_similarity(buy_operation.quote_amount, most_similar_sell.quote_amount)
+                    if current_sim > current_best_sim:
+                        most_similar_sell = sell_operation
 
         if most_similar_sell is not None:
             minimum_fiat = min([most_similar_sell.quote_amount, buy_operation.quote_amount])
@@ -98,25 +111,20 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     for buy, sell in pairs:
         buy_operation = buy.clone()
         sell_operation = sell.clone()
-
-        # ñapa
         minimum_fiat = min([buy_operation.quote_amount, sell_operation.quote_amount])
-        if buy_operation.quote_amount == minimum_fiat:
-            sell_operation.quote_amount = minimum_fiat
-        else:
-            buy_operation.quote_amount = minimum_fiat
+        sell_operation.quote_amount = minimum_fiat
+        buy_operation.quote_amount = minimum_fiat
 
-        if sell_operation.base_currency in quote_assets:
+        if exchange.exchange_pair_exist(buy_operation.base_currency, sell_operation.base_currency):
             base_asset = buy_operation.base_currency
             quote_asset = sell_operation.base_currency
             operation_type = Operation.TYPE_BUY
-        elif buy_operation.base_currency in quote_assets:
+        elif exchange.exchange_pair_exist(sell_operation.base_currency, buy_operation.base_currency):
             base_asset = sell_operation.base_currency
             quote_asset = buy_operation.base_currency
             operation_type = Operation.TYPE_SELL
         else:
             continue
-
         quote_price = exchange.get_asset_price(quote_asset, fiat_asset, instant=now)
         operation = Operation(
             pair=f'{base_asset}/{quote_asset}',
@@ -144,7 +152,6 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
                 del deviations[op.quote_currency]
             elif op.type == Operation.TYPE_SELL and deviations[op.quote_currency] < 0:
                 del deviations[op.quote_currency]
-
     for asset, deviation in deviations.items():
         if deviation < 0:
             type_ = Operation.TYPE_BUY
@@ -161,9 +168,6 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
         reverse=True
     )
     final_fees = exchange.compute_fees(final_operations, fiat_asset=fiat_asset, instant=now)
-
-    # TODO en simulaciones, imprime fees, imprime operaciones originales y convertidas
-    #  y también balances del exchange y planta ipdb, para ver rebalanceo tras rebalanceo qué está haciendo
 
     # show summary to user
     if with_confirmation or not quiet:

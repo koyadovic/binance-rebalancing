@@ -39,10 +39,17 @@ assets = [
 ]
 
 
-def get_all_assets_combinations():
+def get_all_assets_combinations(required=None):
     for n in range(len(assets)):
         for combination in list(itertools.combinations(assets, n + 1)):
-            yield list(combination)
+            current_combination = list(combination)
+            if required is not None:
+                valid = True
+                for asset_required in required:
+                    valid = valid and asset_required in current_combination
+                if not valid:
+                    continue
+            yield current_combination
 
 
 # simulation date ranges
@@ -67,7 +74,7 @@ periods = {
 }
 
 exposures = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
-exposures = [1.0]
+exposures.reverse()
 
 fiat_asset = 'USDT'
 fiat_decimals = 2
@@ -87,13 +94,11 @@ def main():
     # maybe we can use this data for the study
     # read activity/README.md
     # init_activity_module()
-    all_assets_combinations = list(get_all_assets_combinations())
+    all_assets_combinations = list(get_all_assets_combinations(required=['BTC', 'BNB', 'ETH']))
     n = 0
     for starting_date, end_date, tag in simulation_dates:
         for exposure in exposures:
             for current_assets in all_assets_combinations:
-                if len(current_assets) < 8:
-                    continue
                 for period in periods.keys():
                     n += 1
 
@@ -103,13 +108,11 @@ def main():
         for starting_date, end_date, tag in simulation_dates:
             for exposure in exposures:
                 for current_assets in all_assets_combinations:
-                    if len(current_assets) < 8:
-                        continue
                     for period in periods.keys():
                         current_n += 1
                         args = (starting_date, end_date, current_assets, exposure, period, tag, n, current_n)
-                        future = _processing_function(*args)
-                        # future = p.submit(_processing_function, *args)
+                        # future = _processing_function(*args)
+                        future = p.submit(_processing_function, *args)
                         futures.append(future)
 
     with open('simulation.csv', mode='w') as simulation_file:
@@ -120,8 +123,8 @@ def main():
             'Rebalance Profit', 'HODL Profit', 'Profit related to HODL strategy',
         ])
         for future in futures:
-            simulation_writer.writerow(future)
-            # simulation_writer.writerow(future.result())
+            # simulation_writer.writerow(future)
+            simulation_writer.writerow(future.result())
 
 
 def _processing_function(starting_date, end_date, current_assets, exposure, period, tag, n, current_n):
