@@ -62,8 +62,8 @@ while True:
 periods = {
     '1h': timedelta(hours=1),
     '1d': timedelta(days=1),
-    # '1w': timedelta(days=7),
-    # '2w': timedelta(days=14),
+    '1w': timedelta(days=7),
+    '2w': timedelta(days=14),
 }
 
 exposures = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
@@ -71,7 +71,6 @@ exposures = [1.0]
 
 fiat_asset = 'USDT'
 fiat_decimals = 2
-fiat_untouched = len(assets) * 5.0
 initial_fiat_invest = 3000
 
 
@@ -128,6 +127,8 @@ def main():
 def _processing_function(starting_date, end_date, current_assets, exposure, period, tag, n, current_n):
     distributor = EqualDistribution(crypto_assets=current_assets)
     now = starting_date
+
+    fiat_untouched = len(current_assets) * 10.0
 
     exchange.reset_balances(fiat_asset, initial_fiat_invest)
     have_hodl_balances = False

@@ -1,4 +1,4 @@
-import json
+import logging
 from datetime import datetime
 from typing import List
 
@@ -11,12 +11,18 @@ from shared.domain.dependencies import dependency_dispatcher
 from shared.domain.event_dispatcher import event_dispatcher
 
 
+logging.basicConfig(level=logging.NOTSET)
+logger = logging.getLogger()
+
+
 def rebalance(crypto_assets: list = None, fiat_asset: str = None,
               fiat_decimals: int = None, fiat_untouched: float = 0.0,
               exposure: float = None, with_confirmation=True, quiet=False,
               now=None, distribution: Distribution = None):
 
     now = now or datetime.utcnow().replace(tzinfo=pytz.utc)
+
+    logger.info(f'rebalance at {now}: {crypto_assets}, {fiat_asset}, {fiat_decimals}, {fiat_untouched}, {exposure}')
 
     # dependencies
     user_interface: AbstractUserInterface = dependency_dispatcher.request_implementation(AbstractUserInterface)
