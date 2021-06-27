@@ -1,3 +1,14 @@
+from typing import List
+
+from core.domain.entities import Operation
+
+
+class CannotProcessOperation(Exception):
+    def __init__(self, text, operation=None):
+        super().__init__(text)
+        self.operation = operation
+
+
 class AbstractExchange:
     def get_asset_balance(self, asset: str) -> float:
         # if asset is BUSD, must return the amount of BUSD we have
@@ -5,19 +16,32 @@ class AbstractExchange:
         # and so on
         raise NotImplementedError
 
-    def get_asset_fiat_price(self, asset: str, fiat_asset: str, instant=None) -> float:
+    def get_asset_price(self, base_asset: str, quote_asset: str, instant=None) -> float:
         # if asset is BTC and fiat_asset is USDT, must return the BTC price expressed as USDT
         raise NotImplementedError
 
-    def place_fiat_buy_order(self, crypto: str, quantity: float, fiat_asset: str, **kwargs):
+    def place_buy_order(self, base_asset: str, quote_asset: str, quote_amount: float, **kwargs):
         raise NotImplementedError
 
-    def place_fiat_sell_order(self, crypto: str, quantity: float, fiat_asset: str, **kwargs):
+    def place_sell_order(self, base_asset: str, quote_asset: str, quote_amount: float, **kwargs):
+        raise NotImplementedError
+
+    def compute_fees(self, operations: List[Operation], fiat_asset: str, **kwargs) -> float:
+        raise NotImplementedError
+
+    def get_exchange_valid_operations(self, operations: List[Operation]) -> List[Operation]:
+        raise NotImplementedError
+
+    def execute_operations(self, operations: List[Operation], **kwargs) -> List[Operation]:
+        # must return unprocessed operations
+        raise NotImplementedError
+
+    def exchange_pair_exist(self, base_asset, quote_asset) -> bool:
         raise NotImplementedError
 
 
 class AbstractUserInterface:
-    def show_rebalance_summary(self, summary: list, total_balance: str):
+    def show_table(self, headers: list, rows: list, **additional_data):
         raise NotImplementedError
 
     def request_confirmation(self, text: str) -> bool:

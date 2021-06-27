@@ -2,23 +2,19 @@ from core.domain.interfaces import AbstractUserInterface
 from texttable import Texttable
 
 
-class TextUserInterface(AbstractUserInterface):
-    def show_rebalance_summary(self, summary: list, total_balance: str):
-        table = Texttable()
-        table.set_cols_align(["c", "c", "c", "c", "c", "c"])
-        table_rows = [[
-                          'Asset',
-                          'Wanted amount',
-                          'Wanted %',
-                          'Current amount',
-                          'Current %',
-                          'Action'
-                      ]] + summary
+def capitalize(string):
+    return string[0].upper() + string[1:]
 
-        # Printing summary and asking for rebalancing
+
+class TextUserInterface(AbstractUserInterface):
+    def show_table(self, headers: list, rows: list, **additional_data):
+        table = Texttable()
+        table.set_cols_align(['c'] * len(headers))
+        table_rows = [headers] + rows
         table.add_rows(table_rows)
         print(table.draw() + '\n')
-        print(f'TOTAL BALANCE: {total_balance}')
+        for k, v in additional_data.items():
+            print(f'{capitalize(k.replace("_", " "))}: {v}')
 
     def request_confirmation(self, text: str) -> bool:
         print(text)
