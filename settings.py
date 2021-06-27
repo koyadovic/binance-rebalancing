@@ -21,6 +21,6 @@ crypto_assets = [
 
 fiat_asset = 'BUSD'
 fiat_decimals = 2
-fiat_untouched = float(len(crypto_assets) * 5)
+fiat_untouched = float(len(crypto_assets) * 6)
 exposure = 1.0  # max 1.0, min 0.0
 distribution: Distribution = EqualDistribution(crypto_assets=crypto_assets)

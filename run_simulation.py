@@ -1,6 +1,8 @@
 import csv
 import itertools
+import logging
 import multiprocessing
+import sys
 from concurrent.futures import ProcessPoolExecutor
 from datetime import timedelta, datetime
 
@@ -10,6 +12,9 @@ from core.bootstrap import init_core_module_for_simulations
 from core.domain import services as rebalancing_services
 from core.domain.distribution import EqualDistribution
 from shared.domain.dependencies import dependency_dispatcher
+
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 assets = [
@@ -34,10 +39,17 @@ assets = [
 ]
 
 
-def get_all_assets_combinations():
+def get_all_assets_combinations(required=None):
     for n in range(len(assets)):
         for combination in list(itertools.combinations(assets, n + 1)):
-            yield list(combination)
+            current_combination = list(combination)
+            if required is not None:
+                valid = True
+                for asset_required in required:
+                    valid = valid and asset_required in current_combination
+                if not valid:
+                    continue
+            yield current_combination
 
 
 # simulation date ranges
@@ -62,12 +74,11 @@ periods = {
 }
 
 exposures = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+exposures.reverse()
 
 fiat_asset = 'USDT'
 fiat_decimals = 2
-fiat_untouched = len(assets) * 5.0
 initial_fiat_invest = 3000
-
 
 exchange = None
 
@@ -82,27 +93,23 @@ def main():
     # maybe we can use this data for the study
     # read activity/README.md
     # init_activity_module()
-
+    all_assets_combinations = list(get_all_assets_combinations(required=['BTC', 'BNB', 'ETH']))
     n = 0
-    for starting_date, end_date, tag in simulation_dates:
+    for start_date, end_date, tag in simulation_dates:
         for exposure in exposures:
-            for current_assets in get_all_assets_combinations():
-                if len(current_assets) < 8:
-                    continue
+            for current_assets in all_assets_combinations:
                 for period in periods.keys():
                     n += 1
 
     current_n = 0
     futures = []
     with ProcessPoolExecutor(max_workers=multiprocessing.cpu_count() - 1) as p:
-        for starting_date, end_date, tag in simulation_dates:
+        for start_date, end_date, tag in simulation_dates:
             for exposure in exposures:
-                for current_assets in get_all_assets_combinations():
-                    if len(current_assets) < 8:
-                        continue
+                for current_assets in all_assets_combinations:
                     for period in periods.keys():
-                        args = (starting_date, end_date, current_assets, exposure, period, tag, n, current_n + 1)
                         current_n += 1
+                        args = (start_date, end_date, current_assets, exposure, period, tag, n, current_n)
                         # future = _processing_function(*args)
                         future = p.submit(_processing_function, *args)
                         futures.append(future)
@@ -119,9 +126,11 @@ def main():
             simulation_writer.writerow(future.result())
 
 
-def _processing_function(starting_date, end_date, current_assets, exposure, period, tag, n, current_n):
+def _processing_function(start_date, end_date, current_assets, exposure, period, tag, n, current_n):
     distributor = EqualDistribution(crypto_assets=current_assets)
-    now = starting_date
+    now = start_date
+
+    fiat_untouched = len(current_assets) * 6.0
 
     exchange.reset_balances(fiat_asset, initial_fiat_invest)
     have_hodl_balances = False
@@ -149,7 +158,7 @@ def _processing_function(starting_date, end_date, current_assets, exposure, peri
             hodl_balances = {fiat_asset: 0.0}
             for asset in current_assets:
                 fiat_for_asset = (distributor.assign_percentage(asset) / 100) * initial_fiat_invest
-                asset_price = exchange.get_asset_fiat_price(asset, fiat_asset, instant=now)
+                asset_price = exchange.get_asset_price(asset, fiat_asset, instant=now)
                 # 0.999 is for binance fees
                 hodl_balances[asset] = (fiat_for_asset * 0.999) / asset_price
             have_hodl_balances = True
@@ -194,7 +203,7 @@ def compute_fiat_balance(balances, now):
     for asset, balance in balances.items():
         if asset == fiat_asset:
             continue
-        total_fiat_balance += exchange.get_asset_fiat_price(asset, fiat_asset, instant=now) * balance
+        total_fiat_balance += exchange.get_asset_price(asset, fiat_asset, instant=now) * balance
     return total_fiat_balance
 
 
