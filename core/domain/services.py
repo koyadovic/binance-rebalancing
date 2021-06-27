@@ -32,10 +32,84 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     rebalance_data = _compute_rebalancing_data(crypto_assets, exposure, compiled_data, total_balance, distribution,
                                                fiat_untouched)
 
+    # initial operations
     raw_operations = _transform_rebalance_data_into_operations(rebalance_data, fiat_asset)
-    default_operations = exchange.get_exchange_valid_operations(raw_operations)
-    default_fees = exchange.compute_fees(default_operations, fiat_asset=fiat_asset, instant=now)
 
+    # default accepted operations by the exchange. This uses fiat by default
+    default_operations = exchange.get_exchange_valid_operations(raw_operations)
+    # default_fees = exchange.compute_fees(default_operations, fiat_asset=fiat_asset, instant=now)
+
+    # this try to use direct conversion between assets, if it exists
+    final_operations = _try_to_use_direct_conversions_between_assets(raw_operations, fiat_asset, now)
+    # final_fees = exchange.compute_fees(final_operations, fiat_asset=fiat_asset, instant=now)
+
+    # show summary to user
+    if with_confirmation or not quiet:
+        headers = ['Symbol', 'Wanted amount', 'Wanted %', 'Current amount', 'Current %', 'Action']
+        summary = []
+        for asset, data in rebalance_data.items():
+            row = [
+                asset,
+                f'{fiat_asset} {round(data["wanted_fiat"], fiat_decimals)}',
+                f'{data["target_percentage"]}%',
+                f'{fiat_asset} {round(data["current_fiat"], fiat_decimals)}',
+                f'{data["current_percentage"]}%',
+            ]
+            for op in final_operations:
+                if asset in [op.base_currency, op.quote_currency]:
+                    row.append(str(op))
+                    break
+            else:
+                row.append('NOTHING')
+            summary.append(row)
+        user_interface.show_table(headers=headers, rows=summary, total_balance=f'{fiat_asset} {round(total_balance, fiat_decimals)}')
+
+    # if there is nothing to do, return
+    if len(final_operations) == 0:
+        return
+
+    # request confirmation, there are pending actions
+    if with_confirmation:
+        confirmed = user_interface.request_confirmation('Proceed with rebalance?')
+        if not confirmed:
+            return
+
+    unprocessed = exchange.execute_operations(final_operations, fiat_asset=fiat_asset, instant=now)
+    if len(unprocessed) > 0:
+        print(f'now: {now}')
+        print(f'current_fiat_balance: {current_fiat_balance}')
+        print(f'crypto_assets: {crypto_assets}')
+        print(f'fiat_untouched: {fiat_untouched}')
+        print(f'exposure: {exposure}')
+        print(f'rebalance_data: {json.dumps(rebalance_data)}')
+        print(f'Default operations: {default_operations}')
+        print(f'Final operations: {final_operations}')
+        for operation in unprocessed:
+            quote_balance = exchange.get_asset_balance(operation.quote_currency)
+            if quote_balance < operation.quote_amount:
+                operation.quote_amount = exchange.get_asset_balance(operation.quote_currency)
+                valid_operation = exchange.get_exchange_valid_operations([operation])
+                result = exchange.execute_operations(valid_operation, fiat_asset=fiat_asset, instant=now)
+                if len(valid_operation) > 0 and len(result) == 0:
+                    print(f'{valid_operation[0]} REALIZADA')
+        print(f'=' * 80)
+
+    compiled_data, current_fiat_balance, total_balance = _get_compiled_balances(crypto_assets, fiat_asset, now)
+    for crypto_asset in crypto_assets:
+        event_dispatcher.emit('crypto-asset-balance', **{
+            'now': now,
+            'crypto_asset': crypto_asset,
+            'balance': compiled_data[crypto_asset]['balance'],
+        })
+    event_dispatcher.emit('total-balance', **{
+        'now': now,
+        'fiat_asset': fiat_asset,
+        'total_balance': total_balance,
+    })
+
+
+def _try_to_use_direct_conversions_between_assets(raw_operations, fiat_asset, now):
+    exchange: AbstractExchange = dependency_dispatcher.request_implementation(AbstractExchange)
     raw_buy_operations, raw_sell_operations = _split_buy_and_sell_operations(raw_operations)
 
     # first we extract valid quote_assets for this exchange
@@ -167,59 +241,7 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
         key=lambda o: (o.type, o.quote_amount),
         reverse=True
     )
-    final_fees = exchange.compute_fees(final_operations, fiat_asset=fiat_asset, instant=now)
-
-    # show summary to user
-    if with_confirmation or not quiet:
-        user_interface.show_table(
-            headers=['Pair', 'Operation Type', 'Amount'],
-            rows=[[op.pair, op.type, f'{op.quote_currency} {op.quote_amount}'] for op in final_operations],
-            default_FEES=f'{fiat_asset} {default_fees}',
-            final_FEES=f'{fiat_asset} {final_fees}',
-        )
-
-    # if there is nothing to do, return
-    if len(final_operations) == 0:
-        return
-
-    # request confirmation, there are pending actions
-    if with_confirmation:
-        confirmed = user_interface.request_confirmation('Proceed with rebalance?')
-        if not confirmed:
-            return
-
-    unprocessed = exchange.execute_operations(final_operations, fiat_asset=fiat_asset, instant=now)
-    if len(unprocessed) > 0:
-        print(f'now: {now}')
-        print(f'current_fiat_balance: {current_fiat_balance}')
-        print(f'crypto_assets: {crypto_assets}')
-        print(f'fiat_untouched: {fiat_untouched}')
-        print(f'exposure: {exposure}')
-        print(f'rebalance_data: {json.dumps(rebalance_data)}')
-        print(f'Default operations: {default_operations}')
-        print(f'Final operations: {final_operations}')
-        for operation in unprocessed:
-            quote_balance = exchange.get_asset_balance(operation.quote_currency)
-            if quote_balance < operation.quote_amount:
-                operation.quote_amount = exchange.get_asset_balance(operation.quote_currency)
-                valid_operation = exchange.get_exchange_valid_operations([operation])
-                result = exchange.execute_operations(valid_operation, fiat_asset=fiat_asset, instant=now)
-                if len(valid_operation) > 0 and len(result) == 0:
-                    print(f'{valid_operation[0]} REALIZADA')
-        print(f'=' * 80)
-
-    compiled_data, current_fiat_balance, total_balance = _get_compiled_balances(crypto_assets, fiat_asset, now)
-    for crypto_asset in crypto_assets:
-        event_dispatcher.emit('crypto-asset-balance', **{
-            'now': now,
-            'crypto_asset': crypto_asset,
-            'balance': compiled_data[crypto_asset]['balance'],
-        })
-    event_dispatcher.emit('total-balance', **{
-        'now': now,
-        'fiat_asset': fiat_asset,
-        'total_balance': total_balance,
-    })
+    return final_operations
 
 
 def _get_quote_assets(buy_operations, sell_operations):
@@ -282,6 +304,8 @@ def _compute_rebalancing_data(crypto_assets, exposure, compiled_data, total_bala
             'wanted_fiat': wanted_fiat_balance,
             'current_fiat': compiled_data[crypto_asset]['fiat'],
             'diff': diff,
+            'current_percentage': current_percentage,
+            'target_percentage': target_percentage,
             'diff_percentage': diff_percentage,
         }
 
