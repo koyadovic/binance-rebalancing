@@ -1,15 +1,14 @@
-import json
-import logging
-from datetime import datetime
-from typing import List
-
-import pytz
-
 from core.domain.distribution import Distribution
 from core.domain.entities import Operation
-from core.domain.interfaces import AbstractExchange, AbstractUserInterface, CannotProcessOperation
+from core.domain.interfaces import AbstractExchange, AbstractUserInterface
+from core.domain.tools import number_similarity
 from shared.domain.dependencies import dependency_dispatcher
 from shared.domain.event_dispatcher import event_dispatcher
+
+from datetime import datetime
+import pytz
+import json
+import logging
 
 
 logging.basicConfig(level=logging.WARNING)
@@ -209,6 +208,19 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
                     print(f'{valid_operation[0]} REALIZADA')
         print(f'=' * 80)
 
+    compiled_data, current_fiat_balance, total_balance = _get_compiled_balances(crypto_assets, fiat_asset, now)
+    for crypto_asset in crypto_assets:
+        event_dispatcher.emit('crypto-asset-balance', **{
+            'now': now,
+            'crypto_asset': crypto_asset,
+            'balance': compiled_data[crypto_asset]['balance'],
+        })
+    event_dispatcher.emit('total-balance', **{
+        'now': now,
+        'fiat_asset': fiat_asset,
+        'total_balance': total_balance,
+    })
+
 
 def _get_quote_assets(buy_operations, sell_operations):
     exchange: AbstractExchange = dependency_dispatcher.request_implementation(AbstractExchange)
@@ -289,36 +301,31 @@ def _transform_rebalance_data_into_operations(rebalance_data, fiat_asset):
     return operations
 
 
-def _build_summary(operations: List[Operation]):
-    # TODO build summary
-
-    summary = []
-    for operation in operations:
-        row = [
-            operation.pair,
-            f'{fiat_asset} {round(wanted_fiat_balance, fiat_decimals)}',
-            f'{target_percentage}%',
-            f'{fiat_asset} {round(current_fiat, fiat_decimals)}',
-            f'{current_percentage}%',
-        ]
-        if abs(diff) <= 5.0:
-            row.append(f'NOTHING')
-        else:
-            if diff < 0:
-                if -10.0 < diff < -5.0:
-                    diff = -10.0
-                row.append(f'BUY {fiat_asset} {abs(round(diff, fiat_decimals))}')
-            else:
-                if 10.0 > diff > 5.0:
-                    diff = 10.0
-                row.append(f'SELL {fiat_asset} {abs(round(diff, fiat_decimals))}')
-        summary.append(row)
-    return summary
-
-
-def number_similarity(n1, n2):
-    ns = [n1, n2]
-    return min(ns) / max(ns)
+# def _build_summary(operations: List[Operation]):
+#     # TODO build summary
+#
+#     summary = []
+#     for operation in operations:
+#         row = [
+#             operation.pair,
+#             f'{fiat_asset} {round(wanted_fiat_balance, fiat_decimals)}',
+#             f'{target_percentage}%',
+#             f'{fiat_asset} {round(current_fiat, fiat_decimals)}',
+#             f'{current_percentage}%',
+#         ]
+#         if abs(diff) <= 5.0:
+#             row.append(f'NOTHING')
+#         else:
+#             if diff < 0:
+#                 if -10.0 < diff < -5.0:
+#                     diff = -10.0
+#                 row.append(f'BUY {fiat_asset} {abs(round(diff, fiat_decimals))}')
+#             else:
+#                 if 10.0 > diff > 5.0:
+#                     diff = 10.0
+#                 row.append(f'SELL {fiat_asset} {abs(round(diff, fiat_decimals))}')
+#         summary.append(row)
+#     return summary
 
 
 # def rebalance_execution(crypto_assets, fiat_asset, fiat_decimals, current_fiat_balance, rebalance_data, now,
