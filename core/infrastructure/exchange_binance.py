@@ -109,22 +109,27 @@ class BinanceExchange(AbstractExchange):
 
         return result_operations
 
-    def execute_operations(self, operations: List[Operation], **kwargs):
+    def execute_operations(self, operations: List[Operation], **kwargs) -> List[Operation]:
+        unprocessed = []
         for operation in operations:
-            if operation.type == Operation.TYPE_SELL:
-                self.place_sell_order(
-                    operation.base_currency,
-                    operation.quote_currency,
-                    operation.quote_amount,
-                )
-                # print(f'Executed -> {operation}')
-            elif operation.type == Operation.TYPE_BUY:
-                self.place_buy_order(
-                    operation.base_currency,
-                    operation.quote_currency,
-                    operation.quote_amount,
-                )
-                # print(f'Executed -> {operation}')
+            try:
+                if operation.type == Operation.TYPE_SELL:
+                    self.place_sell_order(
+                        operation.base_currency,
+                        operation.quote_currency,
+                        operation.quote_amount,
+                    )
+                elif operation.type == Operation.TYPE_BUY:
+                    self.place_buy_order(
+                        operation.base_currency,
+                        operation.quote_currency,
+                        operation.quote_amount,
+                    )
+            except Exception as e:
+                print(e)
+                unprocessed.append(operation)
+
+        return unprocessed
 
     def exchange_pair_exist(self, base_asset, quote_asset) -> bool:
         return f'{base_asset}{quote_asset}' in self._get_exchange_info()

@@ -32,7 +32,8 @@ class AbstractExchange:
     def get_exchange_valid_operations(self, operations: List[Operation]) -> List[Operation]:
         raise NotImplementedError
 
-    def execute_operations(self, operations: List[Operation], **kwargs):
+    def execute_operations(self, operations: List[Operation], **kwargs) -> List[Operation]:
+        # must return unprocessed operations
         raise NotImplementedError
 
     def exchange_pair_exist(self, base_asset, quote_asset) -> bool:

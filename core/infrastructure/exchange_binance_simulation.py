@@ -6,80 +6,18 @@ from typing import List
 from core.domain.entities import Operation
 from binance import Client
 
-from core.domain.interfaces import CannotProcessOperation, AbstractExchange
+from core.domain.interfaces import CannotProcessOperation
+from core.infrastructure.exchange_binance import BinanceExchange
 from shared.domain.decorators import execution_with_attempts
 
 
-class BinanceSimulationExchange(AbstractExchange):
-
-    def compute_fees(self, operations: List[Operation], fiat_asset: str, **kwargs) -> float:
-        total_fees = 0.0
-        for operation in operations:
-            if operation.quote_currency == fiat_asset:
-                total_fees += operation.quote_amount * (0.1 / 100.0)
-            else:
-                counter_fiat_price = self.get_asset_price(operation.quote_currency, fiat_asset, **kwargs)
-                total_fees += (operation.quote_amount / counter_fiat_price) * (0.1 / 100.0)
-        return round(total_fees, 8)
-
-    def get_exchange_valid_operations(self, operations: List[Operation]) -> List[Operation]:
-        ei = self._get_exchange_info()
-
-        result_operations = []
-        for operation in operations:
-            cloned_operation = operation.clone()
-
-            valid_operation = True
-            reason = ''
-
-            pair_info = ei.get(f'{cloned_operation.base_currency}{cloned_operation.quote_currency}', None)
-            if pair_info is None:
-                valid_operation = False
-                reason = 'pair selected does not exist'
-
-            if valid_operation:
-                for filtr in pair_info['filters']:
-                    filter_type = filtr['filterType']
-                    if filter_type == 'PRICE_FILTER':
-                        """
-                        ETHBUSD
-                        "minPrice": "0.01000000",
-                        "maxPrice": "100000.00000000",
-                        "tickSize": "0.01000000" <--- step_size of quote asset
-                        """
-                        step_size = round(float(filtr['tickSize']), 8)
-                        cloned_operation.quote_amount = self._fix_amount_by_step_size(cloned_operation.quote_amount,
-                                                                                      step_size)
-            if valid_operation:
-                for filtr in pair_info['filters']:
-                    filter_type = filtr['filterType']
-                    if filter_type == 'MIN_NOTIONAL':
-                        """
-                        ETHBUSD
-                        "minNotional": "10.00000000", <--- minimum amount of quote asset
-                        "applyToMarket": true,
-                        "avgPriceMins": 5
-                        """
-                        minimum_operation_amount = round(float(filtr['minNotional']), 8)
-                        if cloned_operation.quote_amount < minimum_operation_amount:
-                            valid_operation = False
-                            reason = 'operation does not meet the minimum amount required to operate'
-                            break
-
-            if valid_operation:
-                result_operations.append(cloned_operation)
-            else:
-                # print(f'Operation {operation} was discarded: {reason}')
-                pass
-
-        return result_operations
+class BinanceSimulationExchange(BinanceExchange):
 
     def exchange_pair_exist(self, base_asset, quote_asset) -> bool:
         return f'{base_asset}{quote_asset}' in self._get_exchange_info()
 
     def __init__(self, api_key=None, api_secret=None):
-        self._api_key = api_key
-        self._api_secret = api_secret
+        super().__init__(api_key=api_key, api_secret=api_secret)
         self._month_prices = {}
         self.balances = {}
 
@@ -184,7 +122,9 @@ class BinanceSimulationExchange(AbstractExchange):
             'volume': float(data_item[5]),
         }
 
-    def execute_operations(self, operations: List[Operation], fiat_asset=None, **kwargs):
+    def execute_operations(self, operations: List[Operation], fiat_asset=None, **kwargs) -> List[Operation]:
+        unprocessed = []
+
         for operation in operations:
             if operation.base_currency not in self.balances:
                 self.balances[operation.base_currency] = 0.0
@@ -204,34 +144,24 @@ class BinanceSimulationExchange(AbstractExchange):
 
             if operation.type == Operation.TYPE_SELL:
                 if self.balances[operation.base_currency] < operation_fiat_amount / base_fiat_price:
-                    raise CannotProcessOperation('NO SE PUEDE VENDER', operation)
+                    unprocessed.append(operation)
+                    print('NO SE PUEDE VENDER', operation)
                 else:
                     self.balances[operation.quote_currency] += operation_fiat_amount / quote_fiat_price
                     self.balances[operation.base_currency] -= operation_fiat_amount / base_fiat_price
 
             elif operation.type == Operation.TYPE_BUY:
                 if self.balances[operation.quote_currency] < operation_fiat_amount / quote_fiat_price:
-                    raise CannotProcessOperation('NO SE PUEDE COMPRAR', operation)
+                    unprocessed.append(operation)
+                    print('NO SE PUEDE COMPRAR', operation)
                 else:
                     self.balances[operation.quote_currency] -= operation_fiat_amount / quote_fiat_price
                     self.balances[operation.base_currency] += operation_fiat_amount / base_fiat_price
+        return unprocessed
 
     @classmethod
     def _get_exchange_info(cls):
         return processed_exchange_info
-
-    @classmethod
-    def _fix_amount_by_step_size(cls, amount, step_size):
-        # if step_size is 5, 99 will be converted to 95.0, which is the more conservative result.
-
-        # If 99 with step_size of 5 need to be converted to 100,
-        # amount // step_size could be changed to round(amount / step_size) before multiplying it by step_size again
-
-        # the round(amount, 8) is to fix Python problems when amount // step_size * step_size
-        # results in something like 99.0000000000000001.
-        # round(99.0000000000000001, 8) results in 99.0 which is the right result
-        # round(99.2200000000000001, 8) results in 99.22 which is the right result again
-        return round(amount // step_size * step_size, 8)
 
 
 exchange_info = '''{

@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime
 from typing import List
@@ -148,9 +149,9 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
             elif op.type == Operation.TYPE_SELL and deviations[op.base_currency] < 0:
                 del deviations[op.base_currency]
         if op.quote_currency in deviations:
-            if op.type == Operation.TYPE_BUY and deviations[op.quote_currency] > 0:
+            if op.type == Operation.TYPE_BUY and deviations[op.quote_currency] < 0:
                 del deviations[op.quote_currency]
-            elif op.type == Operation.TYPE_SELL and deviations[op.quote_currency] < 0:
+            elif op.type == Operation.TYPE_SELL and deviations[op.quote_currency] > 0:
                 del deviations[op.quote_currency]
     for asset, deviation in deviations.items():
         if deviation < 0:
@@ -164,7 +165,7 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
     # to finalize this, get_exchange_valid_operations will return the valid ones.
     final_operations = sorted(
         exchange.get_exchange_valid_operations(final_operations),
-        key=lambda o: o.type,
+        key=lambda o: (o.type, o.quote_amount),
         reverse=True
     )
     final_fees = exchange.compute_fees(final_operations, fiat_asset=fiat_asset, instant=now)
@@ -178,9 +179,6 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
             final_FEES=f'{fiat_asset} {final_fees}',
         )
 
-    # if final_fees > default_fees:
-    #     import ipdb; ipdb.set_trace(context=10)
-
     # if there is nothing to do, return
     if len(final_operations) == 0:
         return
@@ -191,11 +189,25 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
         if not confirmed:
             return
 
-    try:
-        exchange.execute_operations(final_operations, fiat_asset=fiat_asset, instant=now)
-    except CannotProcessOperation as e:
-        print(e, e.operation)
-        import ipdb; ipdb.set_trace(context=10)
+    unprocessed = exchange.execute_operations(final_operations, fiat_asset=fiat_asset, instant=now)
+    if len(unprocessed) > 0:
+        print(f'now: {now}')
+        print(f'current_fiat_balance: {current_fiat_balance}')
+        print(f'crypto_assets: {crypto_assets}')
+        print(f'fiat_untouched: {fiat_untouched}')
+        print(f'exposure: {exposure}')
+        print(f'rebalance_data: {json.dumps(rebalance_data)}')
+        print(f'Default operations: {default_operations}')
+        print(f'Final operations: {final_operations}')
+        for operation in unprocessed:
+            quote_balance = exchange.get_asset_balance(operation.quote_currency)
+            if quote_balance < operation.quote_amount:
+                operation.quote_amount = exchange.get_asset_balance(operation.quote_currency)
+                valid_operation = exchange.get_exchange_valid_operations([operation])
+                result = exchange.execute_operations(valid_operation, fiat_asset=fiat_asset, instant=now)
+                if len(valid_operation) > 0 and len(result) == 0:
+                    print(f'{valid_operation[0]} REALIZADA')
+        print(f'=' * 80)
 
 
 def _get_quote_assets(buy_operations, sell_operations):

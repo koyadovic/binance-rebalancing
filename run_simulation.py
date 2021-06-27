@@ -80,7 +80,6 @@ fiat_asset = 'USDT'
 fiat_decimals = 2
 initial_fiat_invest = 3000
 
-
 exchange = None
 
 
@@ -96,7 +95,7 @@ def main():
     # init_activity_module()
     all_assets_combinations = list(get_all_assets_combinations(required=['BTC', 'BNB', 'ETH']))
     n = 0
-    for starting_date, end_date, tag in simulation_dates:
+    for start_date, end_date, tag in simulation_dates:
         for exposure in exposures:
             for current_assets in all_assets_combinations:
                 for period in periods.keys():
@@ -105,12 +104,12 @@ def main():
     current_n = 0
     futures = []
     with ProcessPoolExecutor(max_workers=multiprocessing.cpu_count() - 1) as p:
-        for starting_date, end_date, tag in simulation_dates:
+        for start_date, end_date, tag in simulation_dates:
             for exposure in exposures:
                 for current_assets in all_assets_combinations:
                     for period in periods.keys():
                         current_n += 1
-                        args = (starting_date, end_date, current_assets, exposure, period, tag, n, current_n)
+                        args = (start_date, end_date, current_assets, exposure, period, tag, n, current_n)
                         # future = _processing_function(*args)
                         future = p.submit(_processing_function, *args)
                         futures.append(future)
@@ -127,11 +126,11 @@ def main():
             simulation_writer.writerow(future.result())
 
 
-def _processing_function(starting_date, end_date, current_assets, exposure, period, tag, n, current_n):
+def _processing_function(start_date, end_date, current_assets, exposure, period, tag, n, current_n):
     distributor = EqualDistribution(crypto_assets=current_assets)
-    now = starting_date
+    now = start_date
 
-    fiat_untouched = len(current_assets) * 10.0
+    fiat_untouched = len(current_assets) * 6.0
 
     exchange.reset_balances(fiat_asset, initial_fiat_invest)
     have_hodl_balances = False
