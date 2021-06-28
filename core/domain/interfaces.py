@@ -1,12 +1,6 @@
-from typing import List
-
 from core.domain.entities import Operation
 
-
-class CannotProcessOperation(Exception):
-    def __init__(self, text, operation=None):
-        super().__init__(text)
-        self.operation = operation
+from typing import List
 
 
 class AbstractExchange:

@@ -6,7 +6,6 @@ from typing import List
 from core.domain.entities import Operation
 from binance import Client
 
-from core.domain.interfaces import CannotProcessOperation
 from core.infrastructure.exchange_binance import BinanceExchange
 from shared.domain.decorators import execution_with_attempts
 
