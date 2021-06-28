@@ -148,18 +148,8 @@ def main():
                 jobs.remove(completed_job)
 
             current_time = time.time()
-            hours, minutes, seconds = _compute_eta(start_time, current_time, n, current_n)
-            print(f'--- {current_n}/{n} --- ETA: {hours}h {minutes}m {seconds}s')
-
-
-def _compute_eta(start_time, current_time, total, cycles_done):
-    seconds = current_time - start_time
-    seconds_per_cycle = seconds / cycles_done
-    pending_seconds = seconds_per_cycle * (total - cycles_done)
-    hours = int(pending_seconds // 3600)
-    minutes = int((pending_seconds - (hours * 3600)) // 60)
-    seconds = int(pending_seconds - (hours * 3600) - (minutes * 60))
-    return hours, minutes, seconds
+            days, hours, minutes, seconds = _compute_eta(start_time, current_time, n, current_n)
+            print(f'- {current_n}/{n} - ETA: {_eta_to_string(days, hours, minutes, seconds)}')
 
 
 def _processing_function(start_date, end_date, current_assets, initial_fiat_invest, exposure, period, tag):
@@ -240,6 +230,30 @@ def compute_fiat_balance(balances, now):
             continue
         total_fiat_balance += exchange.get_asset_price(asset, fiat_asset, instant=now) * balance
     return total_fiat_balance
+
+
+def _eta_to_string(days, hours, minutes, seconds):
+    parts = []
+    if days != 0:
+        parts.append(f'{days} days')
+    if hours != 0:
+        parts.append(f'{hours} hours')
+    if minutes != 0:
+        parts.append(f'{minutes} minutes')
+    if seconds != 0:
+        parts.append(f'{seconds} seconds')
+    return ' '.join(parts)
+
+
+def _compute_eta(start_time, current_time, total, cycles_done):
+    seconds = current_time - start_time
+    seconds_per_cycle = seconds / cycles_done
+    pending_seconds = seconds_per_cycle * (total - cycles_done)
+    days = int(pending_seconds // (3600 * 24))
+    hours = int((pending_seconds - (days * 3600 * 24)) // 3600)
+    minutes = int((pending_seconds - (days * 3600 * 24) - (hours * 3600)) // 60)
+    seconds = int(pending_seconds - (days * 3600 * 24) - (hours * 3600) - (minutes * 60))
+    return days, hours, minutes, seconds
 
 
 if __name__ == '__main__':
