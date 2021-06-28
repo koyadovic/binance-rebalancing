@@ -1,9 +1,7 @@
 import csv
 import itertools
-import logging
 import multiprocessing
-import sys
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import timedelta, datetime
 
 import pytz
@@ -12,9 +10,6 @@ from core.bootstrap import init_core_module_for_simulations
 from core.domain import services as rebalancing_services
 from core.domain.distribution import EqualDistribution
 from shared.domain.dependencies import dependency_dispatcher
-
-
-logging.basicConfig(level=logging.DEBUG)
 
 
 assets = [
@@ -37,6 +32,16 @@ assets = [
     # 'AAVE',
 
 ]
+day_ranges = [90, 180, 360]
+periods = {
+    '1h': timedelta(hours=1),
+    '1d': timedelta(days=1),
+    '1w': timedelta(days=7),
+}
+
+exposures = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+exposures.reverse()
+initial_fiat_investments = [2500, 5000, 10000]
 
 
 def get_all_assets_combinations(required=None):
@@ -56,29 +61,19 @@ def get_all_assets_combinations(required=None):
 starting_date = datetime(2019, 8, 1, 0, 0, 0).replace(tzinfo=pytz.utc)
 ending_date = datetime(2021, 6, 1, 0, 0, 0).replace(tzinfo=pytz.utc)
 
+
 simulation_dates = []
-start = starting_date
-while True:
-    end = start + timedelta(days=300)
-    if end > ending_date:
-        break
-    simulation_dates.append((start, end, ''))
-    start += timedelta(days=30)
-
-
-periods = {
-    '1h': timedelta(hours=1),
-    '1d': timedelta(days=1),
-    '1w': timedelta(days=7),
-    '2w': timedelta(days=14),
-}
-
-exposures = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
-exposures.reverse()
+for day_range in day_ranges:
+    start = starting_date
+    while True:
+        end = start + timedelta(days=day_range)
+        if end > ending_date:
+            break
+        simulation_dates.append((start, end, f'{day_range}'))
+        start += timedelta(days=30)
 
 fiat_asset = 'USDT'
 fiat_decimals = 2
-initial_fiat_invest = 3000
 
 exchange = None
 
@@ -93,26 +88,47 @@ def main():
     # maybe we can use this data for the study
     # read activity/README.md
     # init_activity_module()
-    all_assets_combinations = list(get_all_assets_combinations(required=['BTC', 'BNB', 'ETH']))
-    n = 0
-    for start_date, end_date, tag in simulation_dates:
-        for exposure in exposures:
-            for current_assets in all_assets_combinations:
-                for period in periods.keys():
-                    n += 1
+    # all_assets_combinations = list(get_all_assets_combinations(required=['BTC', 'BNB', 'ETH']))
 
-    current_n = 0
-    futures = []
-    with ProcessPoolExecutor(max_workers=multiprocessing.cpu_count() - 1) as p:
-        for start_date, end_date, tag in simulation_dates:
+    all_assets_combinations = list(get_all_assets_combinations())
+    pending_tasks_args = []
+    for start_date, end_date, tag in simulation_dates:
+        for initial_fiat_invest in initial_fiat_investments:
             for exposure in exposures:
                 for current_assets in all_assets_combinations:
                     for period in periods.keys():
-                        current_n += 1
-                        args = (start_date, end_date, current_assets, exposure, period, tag, n, current_n)
-                        # future = _processing_function(*args)
-                        future = p.submit(_processing_function, *args)
-                        futures.append(future)
+                        args = (start_date, end_date, current_assets, initial_fiat_invest, exposure, period, tag)
+                        pending_tasks_args.append(args)
+
+    max_tasks_in_queue = (multiprocessing.cpu_count() - 1) * 10
+    results = []
+    n = len(pending_tasks_args)
+    current_n = 0
+
+    with ProcessPoolExecutor(max_workers=multiprocessing.cpu_count() - 1) as executor:
+        # Set for the jobs created
+        jobs = set()
+
+        args_left = len(pending_tasks_args)
+        args_iter = iter(pending_tasks_args)
+
+        while args_left:
+            for args in args_iter:
+                if len(jobs) > max_tasks_in_queue:
+                    break
+                current_n += 1
+                job = executor.submit(_processing_function, *args, n, current_n)
+                jobs.add(job)
+
+            completed_jobs = []
+            for job in as_completed(jobs):
+                job_result = job.result()
+                results.append(job_result)
+                args_left -= 1
+                completed_jobs.append(job)
+
+            for completed_job in completed_jobs:
+                jobs.remove(completed_job)
 
     with open('simulation.csv', mode='w') as simulation_file:
         simulation_writer = csv.writer(simulation_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -121,12 +137,11 @@ def main():
             'Rebalance Fiat Balance', 'HODL Fiat Balance',
             'Rebalance Profit', 'HODL Profit', 'Profit related to HODL strategy',
         ])
-        for future in futures:
-            # simulation_writer.writerow(future)
-            simulation_writer.writerow(future.result())
+        for result in results:
+            simulation_writer.writerow(result)
 
 
-def _processing_function(start_date, end_date, current_assets, exposure, period, tag, n, current_n):
+def _processing_function(start_date, end_date, current_assets, initial_fiat_invest, exposure, period, tag, n, current_n):
     distributor = EqualDistribution(crypto_assets=current_assets)
     now = start_date
 
