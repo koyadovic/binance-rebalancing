@@ -76,14 +76,6 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
 
     unprocessed = exchange.execute_operations(final_operations, fiat_asset=fiat_asset, instant=now)
     if len(unprocessed) > 0:
-        print(f'now: {now}')
-        print(f'current_fiat_balance: {current_fiat_balance}')
-        print(f'crypto_assets: {crypto_assets}')
-        print(f'fiat_untouched: {fiat_untouched}')
-        print(f'exposure: {exposure}')
-        print(f'rebalance_data: {json.dumps(rebalance_data)}')
-        print(f'Default operations: {default_operations}')
-        print(f'Final operations: {final_operations}')
         for operation in unprocessed:
             quote_balance = exchange.get_asset_balance(operation.quote_currency)
             if quote_balance < operation.quote_amount:
@@ -91,8 +83,11 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
                 valid_operation = exchange.get_exchange_valid_operations([operation])
                 result = exchange.execute_operations(valid_operation, fiat_asset=fiat_asset, instant=now)
                 if len(valid_operation) > 0 and len(result) == 0:
-                    print(f'{valid_operation[0]} REALIZADA')
-        print(f'=' * 80)
+                    # print(f'{valid_operation[0]} REALIZADA')
+                    pass
+                else:
+                    # TODO log this
+                    pass
 
     compiled_data, current_fiat_balance, total_balance = _get_compiled_balances(crypto_assets, fiat_asset, now)
     for crypto_asset in crypto_assets:
