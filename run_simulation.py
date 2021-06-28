@@ -1,6 +1,7 @@
 import csv
 import itertools
 import multiprocessing
+import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import timedelta, datetime
 
@@ -90,6 +91,14 @@ def main():
     # init_activity_module()
     # all_assets_combinations = list(get_all_assets_combinations(required=['BTC', 'BNB', 'ETH']))
 
+    with open('simulation.csv', mode='w') as simulation_file:
+        simulation_writer = csv.writer(simulation_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        simulation_writer.writerow([
+            'Start', 'End', 'Tag', 'No. Assets', 'Assets', 'Period', 'Exposure',
+            'Rebalance Fiat Balance', 'HODL Fiat Balance',
+            'Rebalance Profit', 'HODL Profit', 'Profit related to HODL strategy',
+        ])
+
     all_assets_combinations = list(get_all_assets_combinations())
     pending_tasks_args = []
     for start_date, end_date, tag in simulation_dates:
@@ -101,11 +110,12 @@ def main():
                         pending_tasks_args.append(args)
 
     max_tasks_in_queue = (multiprocessing.cpu_count() - 1) * 10
-    results = []
     n = len(pending_tasks_args)
     current_n = 0
 
     with ProcessPoolExecutor(max_workers=multiprocessing.cpu_count() - 1) as executor:
+        start_time = time.time()
+
         # Set for the jobs created
         jobs = set()
 
@@ -117,31 +127,32 @@ def main():
                 if len(jobs) > max_tasks_in_queue:
                     break
                 current_n += 1
-                job = executor.submit(_processing_function, *args, n, current_n)
+                job = executor.submit(_processing_function, *args)
                 jobs.add(job)
 
             completed_jobs = []
+            completed_results = []
             for job in as_completed(jobs):
                 job_result = job.result()
-                results.append(job_result)
+                completed_results.append(job_result)
                 args_left -= 1
                 completed_jobs.append(job)
+
+            if len(completed_results) > 0:
+                with open('simulation.csv', mode='a') as simulation_file:
+                    simulation_writer = csv.writer(simulation_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                    for completed_result in completed_results:
+                        simulation_writer.writerow(completed_result)
 
             for completed_job in completed_jobs:
                 jobs.remove(completed_job)
 
-    with open('simulation.csv', mode='w') as simulation_file:
-        simulation_writer = csv.writer(simulation_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        simulation_writer.writerow([
-            'Start', 'End', 'Tag', 'No. Assets', 'Assets', 'Period', 'Exposure',
-            'Rebalance Fiat Balance', 'HODL Fiat Balance',
-            'Rebalance Profit', 'HODL Profit', 'Profit related to HODL strategy',
-        ])
-        for result in results:
-            simulation_writer.writerow(result)
+            current_time = time.time()
+            days, hours, minutes, seconds = _compute_eta(start_time, current_time, n, current_n)
+            print(f'- {current_n}/{n} - ETA: {_eta_to_string(days, hours, minutes, seconds)}')
 
 
-def _processing_function(start_date, end_date, current_assets, initial_fiat_invest, exposure, period, tag, n, current_n):
+def _processing_function(start_date, end_date, current_assets, initial_fiat_invest, exposure, period, tag):
     distributor = EqualDistribution(crypto_assets=current_assets)
     now = start_date
 
@@ -209,7 +220,6 @@ def _processing_function(start_date, end_date, current_assets, initial_fiat_inve
         rebalance_fiat_balance, hodl_total_fiat_balance,
         rebalance_profit, hodl_profit, diff_profit,
     ]
-    print(f'--- {current_n}/{n} ---')
     return row
 
 
@@ -220,6 +230,30 @@ def compute_fiat_balance(balances, now):
             continue
         total_fiat_balance += exchange.get_asset_price(asset, fiat_asset, instant=now) * balance
     return total_fiat_balance
+
+
+def _eta_to_string(days, hours, minutes, seconds):
+    parts = []
+    if days != 0:
+        parts.append(f'{days} days')
+    if hours != 0:
+        parts.append(f'{hours} hours')
+    if minutes != 0:
+        parts.append(f'{minutes} minutes')
+    if seconds != 0:
+        parts.append(f'{seconds} seconds')
+    return ' '.join(parts)
+
+
+def _compute_eta(start_time, current_time, total, cycles_done):
+    seconds = current_time - start_time
+    seconds_per_cycle = seconds / cycles_done
+    pending_seconds = seconds_per_cycle * (total - cycles_done)
+    days = int(pending_seconds // (3600 * 24))
+    hours = int((pending_seconds - (days * 3600 * 24)) // 3600)
+    minutes = int((pending_seconds - (days * 3600 * 24) - (hours * 3600)) // 60)
+    seconds = int(pending_seconds - (days * 3600 * 24) - (hours * 3600) - (minutes * 60))
+    return days, hours, minutes, seconds
 
 
 if __name__ == '__main__':
