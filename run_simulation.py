@@ -100,7 +100,7 @@ def main():
                         args = (start_date, end_date, current_assets, initial_fiat_invest, exposure, period, tag)
                         pending_tasks_args.append(args)
 
-    max_tasks_in_queue = 10
+    max_tasks_in_queue = (multiprocessing.cpu_count() - 1) * 2
     results = []
     n = len(pending_tasks_args)
 

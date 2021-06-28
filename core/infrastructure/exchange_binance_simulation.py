@@ -46,7 +46,7 @@ class BinanceSimulationExchange(BinanceExchange):
         quote_balance = self.get_asset_balance(quote_asset)
 
         if quote_balance < quote_amount:
-            raise CannotProcessOperation('NO SE PUEDE COMPRAR')
+            return
 
         quote_balance -= quote_amount
         quote_amount *= 0.999  # binance fee
@@ -60,7 +60,7 @@ class BinanceSimulationExchange(BinanceExchange):
         quote_balance = self.get_asset_balance(quote_asset)
 
         if base_balance < (quote_amount / avg_price):
-            raise CannotProcessOperation('NO SE PUEDE VENDER')
+            return
 
         base_balance -= quote_amount / avg_price
         quote_amount *= 0.999  # binance fee
@@ -145,7 +145,6 @@ class BinanceSimulationExchange(BinanceExchange):
             if operation.type == Operation.TYPE_SELL:
                 if self.balances[operation.base_currency] < operation_fiat_amount / base_fiat_price:
                     unprocessed.append(operation)
-                    print('NO SE PUEDE VENDER', operation)
                 else:
                     self.balances[operation.quote_currency] += operation_fiat_amount / quote_fiat_price
                     self.balances[operation.base_currency] -= operation_fiat_amount / base_fiat_price
@@ -153,7 +152,6 @@ class BinanceSimulationExchange(BinanceExchange):
             elif operation.type == Operation.TYPE_BUY:
                 if self.balances[operation.quote_currency] < operation_fiat_amount / quote_fiat_price:
                     unprocessed.append(operation)
-                    print('NO SE PUEDE COMPRAR', operation)
                 else:
                     self.balances[operation.quote_currency] -= operation_fiat_amount / quote_fiat_price
                     self.balances[operation.base_currency] += operation_fiat_amount / base_fiat_price
