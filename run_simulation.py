@@ -100,32 +100,35 @@ def main():
                         args = (start_date, end_date, current_assets, initial_fiat_invest, exposure, period, tag)
                         pending_tasks_args.append(args)
 
-    max_tasks_in_queue = (multiprocessing.cpu_count() - 1) * 2
+    max_tasks_in_queue = (multiprocessing.cpu_count() - 1) * 10
     results = []
     n = len(pending_tasks_args)
+    current_n = 0
 
     with ProcessPoolExecutor(max_workers=multiprocessing.cpu_count() - 1) as executor:
-        # A dictionary which will contain a list the future info in the key, and the filename in the value
+        # Set for the jobs created
         jobs = set()
 
-        # Loop through the files, and run the parse function for each file, sending the file-name to it.
-        # The results of can come back in any order.
         args_left = len(pending_tasks_args)
         args_iter = iter(pending_tasks_args)
 
         while args_left:
             for args in args_iter:
-                job = executor.submit(_processing_function, *args, n, n - args_left)
-                jobs.add(job)
                 if len(jobs) > max_tasks_in_queue:
                     break
+                current_n += 1
+                job = executor.submit(_processing_function, *args, n, current_n)
+                jobs.add(job)
 
+            completed_jobs = []
             for job in as_completed(jobs):
-                args_left -= 1
                 job_result = job.result()
                 results.append(job_result)
-                jobs.remove(job)
-                break
+                args_left -= 1
+                completed_jobs.append(job)
+
+            for completed_job in completed_jobs:
+                jobs.remove(completed_job)
 
     with open('simulation.csv', mode='w') as simulation_file:
         simulation_writer = csv.writer(simulation_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
