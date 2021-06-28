@@ -1,6 +1,7 @@
 import csv
 import itertools
 import multiprocessing
+import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import timedelta, datetime
 
@@ -113,6 +114,8 @@ def main():
     current_n = 0
 
     with ProcessPoolExecutor(max_workers=multiprocessing.cpu_count() - 1) as executor:
+        start_time = time.time()
+
         # Set for the jobs created
         jobs = set()
 
@@ -124,7 +127,7 @@ def main():
                 if len(jobs) > max_tasks_in_queue:
                     break
                 current_n += 1
-                job = executor.submit(_processing_function, *args, n, current_n)
+                job = executor.submit(_processing_function, *args)
                 jobs.add(job)
 
             completed_jobs = []
@@ -144,8 +147,22 @@ def main():
             for completed_job in completed_jobs:
                 jobs.remove(completed_job)
 
+            current_time = time.time()
+            hours, minutes, seconds = _compute_eta(start_time, current_time, n, current_n)
+            print(f'--- {current_n}/{n} --- ETA: {hours}h {minutes}m {seconds}s')
 
-def _processing_function(start_date, end_date, current_assets, initial_fiat_invest, exposure, period, tag, n, current_n):
+
+def _compute_eta(start_time, current_time, total, cycles_done):
+    seconds = current_time - start_time
+    seconds_per_cycle = seconds / cycles_done
+    pending_seconds = seconds_per_cycle * (total - cycles_done)
+    hours = int(pending_seconds // 3600)
+    minutes = int((pending_seconds - (hours * 3600)) // 60)
+    seconds = int(pending_seconds - (hours * 3600) - (minutes * 60))
+    return hours, minutes, seconds
+
+
+def _processing_function(start_date, end_date, current_assets, initial_fiat_invest, exposure, period, tag):
     distributor = EqualDistribution(crypto_assets=current_assets)
     now = start_date
 
@@ -213,7 +230,6 @@ def _processing_function(start_date, end_date, current_assets, initial_fiat_inve
         rebalance_fiat_balance, hodl_total_fiat_balance,
         rebalance_profit, hodl_profit, diff_profit,
     ]
-    print(f'--- {current_n}/{n} ---')
     return row
 
 
