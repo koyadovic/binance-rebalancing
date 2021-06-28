@@ -90,6 +90,14 @@ def main():
     # init_activity_module()
     # all_assets_combinations = list(get_all_assets_combinations(required=['BTC', 'BNB', 'ETH']))
 
+    with open('simulation.csv', mode='w') as simulation_file:
+        simulation_writer = csv.writer(simulation_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        simulation_writer.writerow([
+            'Start', 'End', 'Tag', 'No. Assets', 'Assets', 'Period', 'Exposure',
+            'Rebalance Fiat Balance', 'HODL Fiat Balance',
+            'Rebalance Profit', 'HODL Profit', 'Profit related to HODL strategy',
+        ])
+
     all_assets_combinations = list(get_all_assets_combinations())
     pending_tasks_args = []
     for start_date, end_date, tag in simulation_dates:
@@ -101,7 +109,6 @@ def main():
                         pending_tasks_args.append(args)
 
     max_tasks_in_queue = (multiprocessing.cpu_count() - 1) * 10
-    results = []
     n = len(pending_tasks_args)
     current_n = 0
 
@@ -121,24 +128,21 @@ def main():
                 jobs.add(job)
 
             completed_jobs = []
+            completed_results = []
             for job in as_completed(jobs):
                 job_result = job.result()
-                results.append(job_result)
+                completed_results.append(job_result)
                 args_left -= 1
                 completed_jobs.append(job)
 
+            if len(completed_results) > 0:
+                with open('simulation.csv', mode='a') as simulation_file:
+                    simulation_writer = csv.writer(simulation_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                    for completed_result in completed_results:
+                        simulation_writer.writerow(completed_result)
+
             for completed_job in completed_jobs:
                 jobs.remove(completed_job)
-
-    with open('simulation.csv', mode='w') as simulation_file:
-        simulation_writer = csv.writer(simulation_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        simulation_writer.writerow([
-            'Start', 'End', 'Tag', 'No. Assets', 'Assets', 'Period', 'Exposure',
-            'Rebalance Fiat Balance', 'HODL Fiat Balance',
-            'Rebalance Profit', 'HODL Profit', 'Profit related to HODL strategy',
-        ])
-        for result in results:
-            simulation_writer.writerow(result)
 
 
 def _processing_function(start_date, end_date, current_assets, initial_fiat_invest, exposure, period, tag, n, current_n):
