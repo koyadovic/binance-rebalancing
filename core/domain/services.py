@@ -1,3 +1,5 @@
+import itertools
+
 from core.domain.distribution import Distribution
 from core.domain.entities import Operation
 from core.domain.interfaces import AbstractExchange, AbstractUserInterface
@@ -81,10 +83,8 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
                 operation.quote_amount = exchange.get_asset_balance(operation.quote_currency)
                 valid_operation = exchange.get_exchange_valid_operations([operation])
                 result = exchange.execute_operations(valid_operation, fiat_asset=fiat_asset, instant=now)
-                if len(valid_operation) == 0 or len(result) > 0:
+                if len(valid_operation) > 0 and len(result) > 0:
                     logger.warning(f'Cannot process operation {operation}')
-            elif quote_balance > operation.quote_amount:
-                logger.warning(f'Cannot process operation {operation}')
 
     compiled_data, current_fiat_balance, total_balance = _get_compiled_balances(crypto_assets, fiat_asset, now)
     for crypto_asset in crypto_assets:
@@ -239,7 +239,7 @@ def _try_to_use_direct_conversions_between_assets(raw_operations, fiat_asset, no
 def _get_quote_assets(buy_operations, sell_operations):
     exchange: AbstractExchange = dependency_dispatcher.request_implementation(AbstractExchange)
     quote_assets = set()
-    for buy_operation, sell_operation in zip(buy_operations, sell_operations):
+    for buy_operation, sell_operation in iter(itertools.product(buy_operations, sell_operations)):
         if exchange.exchange_pair_exist(buy_operation.base_currency, sell_operation.base_currency):
             quote_assets.add(sell_operation.base_currency)
         if exchange.exchange_pair_exist(sell_operation.base_currency, buy_operation.base_currency):

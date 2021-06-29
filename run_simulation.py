@@ -4,9 +4,6 @@ import multiprocessing
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import timedelta, datetime
-
-import pytz
-
 from core.bootstrap import init_core_module_for_simulations
 from core.domain import services as rebalancing_services
 from core.domain.distribution import EqualDistribution
@@ -33,7 +30,8 @@ assets = [
     # 'AAVE',
 
 ]
-day_ranges = [90, 180, 360]
+# day_ranges = [90, 180, 360]
+day_ranges = [180]
 periods = {
     '1h': timedelta(hours=1),
     '1d': timedelta(days=1),
@@ -42,7 +40,7 @@ periods = {
 
 exposures = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 exposures.reverse()
-initial_fiat_investments = [2500, 5000, 10000]
+initial_fiat_investments = [5000, 10000, 20000]
 
 
 def get_all_assets_combinations(required=None):
@@ -59,8 +57,8 @@ def get_all_assets_combinations(required=None):
 
 
 # simulation date ranges
-starting_date = datetime(2019, 8, 1, 0, 0, 0).replace(tzinfo=pytz.utc)
-ending_date = datetime(2021, 6, 1, 0, 0, 0).replace(tzinfo=pytz.utc)
+starting_date = datetime(2019, 8, 1, 0, 0, 0)
+ending_date = datetime(2021, 6, 1, 0, 0, 0)
 
 
 simulation_dates = []
@@ -77,6 +75,14 @@ fiat_asset = 'USDT'
 fiat_decimals = 2
 
 exchange = None
+
+
+def process_completed_results(lst_completed_results):
+    if len(lst_completed_results) > 0:
+        with open('simulation.csv', mode='a') as simulation_file:
+            simulation_writer = csv.writer(simulation_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            for completed_result in lst_completed_results:
+                simulation_writer.writerow(completed_result)
 
 
 def main():
@@ -109,47 +115,49 @@ def main():
                         args = (start_date, end_date, current_assets, initial_fiat_invest, exposure, period, tag)
                         pending_tasks_args.append(args)
 
-    max_tasks_in_queue = (multiprocessing.cpu_count() - 1) * 10
-    n = len(pending_tasks_args)
+    max_tasks_in_queue = 300
+    total_n = len(pending_tasks_args)
     current_n = 0
 
     with ProcessPoolExecutor(max_workers=multiprocessing.cpu_count() - 1) as executor:
-        start_time = time.time()
-
         # Set for the jobs created
         jobs = set()
+        start_time = time.time()
 
-        args_left = len(pending_tasks_args)
-        args_iter = iter(pending_tasks_args)
+        while len(pending_tasks_args) > 0 or len(jobs) > 0:
+            while len(jobs) < max_tasks_in_queue:
+                try:
+                    args = pending_tasks_args.pop(0)
+                    current_n += 1
 
-        while args_left:
-            for args in args_iter:
-                if len(jobs) > max_tasks_in_queue:
+                    # Single process. Use this and comment multiprocessing below to debug with ipdb.
+                    # process_completed_results([_processing_function(*args)])
+
+                    # Multiprocessing
+                    job = executor.submit(_processing_function, *args)
+                    jobs.add(job)
+
+                    if len(jobs) > max_tasks_in_queue:
+                        break
+                except IndexError:
                     break
-                current_n += 1
-                job = executor.submit(_processing_function, *args)
-                jobs.add(job)
 
             completed_jobs = []
             completed_results = []
             for job in as_completed(jobs):
                 job_result = job.result()
                 completed_results.append(job_result)
-                args_left -= 1
                 completed_jobs.append(job)
 
-            if len(completed_results) > 0:
-                with open('simulation.csv', mode='a') as simulation_file:
-                    simulation_writer = csv.writer(simulation_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-                    for completed_result in completed_results:
-                        simulation_writer.writerow(completed_result)
+            process_completed_results(completed_results)
 
             for completed_job in completed_jobs:
                 jobs.remove(completed_job)
 
-            current_time = time.time()
-            days, hours, minutes, seconds = _compute_eta(start_time, current_time, n, current_n)
-            print(f'- {current_n}/{n} - ETA: {_eta_to_string(days, hours, minutes, seconds)}')
+            if len(completed_jobs) > 0:
+                current_time = time.time()
+                days, hours, minutes, seconds = _compute_eta(start_time, current_time, total_n, current_n)
+                print(f'- {current_n}/{total_n} - ETA: {_eta_to_string(days, hours, minutes, seconds)}')
 
 
 def _processing_function(start_date, end_date, current_assets, initial_fiat_invest, exposure, period, tag):
@@ -237,12 +245,11 @@ def _eta_to_string(days, hours, minutes, seconds):
     if days != 0:
         parts.append(f'{days} days')
     if hours != 0:
-        parts.append(f'{hours} hours')
+        parts.append(f'{str(hours).zfill(2)} hours')
     if minutes != 0:
-        parts.append(f'{minutes} minutes')
-    if seconds != 0:
-        parts.append(f'{seconds} seconds')
-    return ' '.join(parts)
+        parts.append(f'{str(minutes).zfill(2)} minutes')
+    parts.append(f'{str(seconds).zfill(2)} seconds')
+    return ' '.join(parts) + ' ...'
 
 
 def _compute_eta(start_time, current_time, total, cycles_done):

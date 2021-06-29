@@ -62,51 +62,36 @@ class BinanceExchange(AbstractExchange):
 
         result_operations = []
         for operation in operations:
+            try:
+                pair_info = exchange_info[f'{operation.base_currency}{operation.quote_currency}']
+            except KeyError:
+                continue
             cloned_operation = operation.clone()
-
-            valid_operation = True
-            reason = ''
-
-            pair_info = exchange_info.get(f'{cloned_operation.base_currency}{cloned_operation.quote_currency}', None)
-            if pair_info is None:
-                valid_operation = False
-                reason = 'pair selected does not exist'
-
-            if valid_operation:
-                for filtr in pair_info['filters']:
-                    filter_type = filtr['filterType']
-                    if filter_type == 'PRICE_FILTER':
-                        """
-                        ETHBUSD
-                        "minPrice": "0.01000000",
-                        "maxPrice": "100000.00000000",
-                        "tickSize": "0.01000000" <--- step_size of quote asset
-                        """
-                        step_size = round(float(filtr['tickSize']), 8)
-                        cloned_operation.quote_amount = self._fix_amount_by_step_size(cloned_operation.quote_amount,
-                                                                                      step_size)
-            if valid_operation:
-                for filtr in pair_info['filters']:
-                    filter_type = filtr['filterType']
-                    if filter_type == 'MIN_NOTIONAL':
-                        """
-                        ETHBUSD
-                        "minNotional": "10.00000000", <--- minimum amount of quote asset
-                        "applyToMarket": true,
-                        "avgPriceMins": 5
-                        """
-                        minimum_operation_amount = round(float(filtr['minNotional']), 8)
-                        if cloned_operation.quote_amount < minimum_operation_amount:
-                            valid_operation = False
-                            reason = 'operation does not meet the minimum amount required to operate'
-                            break
-
-            if valid_operation:
+            valid = True
+            for filtr in pair_info['filters']:
+                filter_type = filtr['filterType']
+                if filter_type == 'PRICE_FILTER':
+                    """
+                    ETHBUSD
+                    "minPrice": "0.01000000",
+                    "maxPrice": "100000.00000000",
+                    "tickSize": "0.01000000" <--- step_size of quote asset
+                    """
+                    step_size = round(float(filtr['tickSize']), 8)
+                    cloned_operation.quote_amount = self._fix_amount_by_step_size(cloned_operation.quote_amount,
+                                                                                  step_size)
+                elif filter_type == 'MIN_NOTIONAL':
+                    """
+                    ETHBUSD
+                    "minNotional": "10.00000000", <--- minimum amount of quote asset
+                    "applyToMarket": true,
+                    "avgPriceMins": 5
+                    """
+                    minimum_operation_amount = round(float(filtr['minNotional']), 8)
+                    if cloned_operation.quote_amount < minimum_operation_amount:
+                        valid = False
+            if valid:
                 result_operations.append(cloned_operation)
-            else:
-                # print(f'Operation {operation} was discarded: {reason}')
-                pass
-
         return result_operations
 
     def execute_operations(self, operations: List[Operation], **kwargs) -> List[Operation]:
