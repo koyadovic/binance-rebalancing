@@ -27,18 +27,17 @@ class BinanceSimulationExchange(BinanceExchange):
         return self.balances.get(asset, 0.0)
 
     def get_asset_price(self, base_asset: str, quote_asset: str, instant=None) -> float:
-        discrete_instant = datetime(instant.year, instant.month, instant.day, instant.hour, 0, 0)
-        dict_month_prices = self.get_month_prices(base_asset, quote_asset, discrete_instant)
+        dict_month_prices = self.get_month_prices(base_asset, quote_asset, instant)
         for delta_h in range(0, 48):
             try:
-                return dict_month_prices[discrete_instant - timedelta(hours=delta_h)]['open']
+                return dict_month_prices[instant - timedelta(hours=delta_h)]['open']
             except KeyError:
                 pass
             try:
-                return dict_month_prices[discrete_instant + timedelta(hours=delta_h)]['open']
+                return dict_month_prices[instant + timedelta(hours=delta_h)]['open']
             except KeyError:
                 pass
-        raise Exception(f'Cannot find price for {base_asset} at {discrete_instant}')
+        raise Exception(f'Cannot find price for {base_asset} at {instant}')
 
     def place_buy_order(self, base_asset: str, quote_asset: str, quote_amount: float, avg_price=None):
         base_balance = self.get_asset_balance(base_asset)
