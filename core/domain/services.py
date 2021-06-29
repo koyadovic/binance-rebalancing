@@ -124,12 +124,12 @@ def _try_to_use_direct_conversions_between_assets(raw_operations, fiat_asset, no
         for sell_operation in raw_sell_operations:
             if deviations[sell_operation.base_currency] <= 0:
                 continue
+            if not exchange.exchange_pair_exist(buy_operation.base_currency, sell_operation.base_currency) and \
+                    not exchange.exchange_pair_exist(sell_operation.base_currency, buy_operation.base_currency):
+                continue
             if buy_operation.base_currency in quote_assets and sell_operation.base_currency in quote_assets:
                 continue
             if buy_operation.base_currency not in quote_assets and sell_operation.base_currency not in quote_assets:
-                continue
-            if not exchange.exchange_pair_exist(buy_operation.base_currency, sell_operation.base_currency) and \
-                    not exchange.exchange_pair_exist(sell_operation.base_currency, buy_operation.base_currency):
                 continue
             if most_similar_sell is None:
                 most_similar_sell = sell_operation
@@ -238,23 +238,22 @@ def _try_to_use_direct_conversions_between_assets(raw_operations, fiat_asset, no
 
 def _get_quote_assets(buy_operations, sell_operations):
     exchange: AbstractExchange = dependency_dispatcher.request_implementation(AbstractExchange)
-    quote_assets = []
-    for buy_operation in buy_operations:
-        if buy_operation.base_currency in quote_assets:
-            continue
-        for sell_operation in sell_operations:
-            if sell_operation.base_currency in quote_assets:
-                continue
-            if exchange.exchange_pair_exist(buy_operation.base_currency, sell_operation.base_currency):
-                quote_assets.append(sell_operation.base_currency)
-            if exchange.exchange_pair_exist(sell_operation.base_currency, buy_operation.base_currency):
-                quote_assets.append(buy_operation.base_currency)
+    quote_assets = set()
+    for buy_operation, sell_operation in zip(buy_operations, sell_operations):
+        if exchange.exchange_pair_exist(buy_operation.base_currency, sell_operation.base_currency):
+            quote_assets.add(sell_operation.base_currency)
+        if exchange.exchange_pair_exist(sell_operation.base_currency, buy_operation.base_currency):
+            quote_assets.add(buy_operation.base_currency)
     return quote_assets
 
 
 def _split_buy_and_sell_operations(operations):
-    sell_operations = [op for op in operations if op.type == Operation.TYPE_SELL]
-    buy_operations = [op for op in operations if op.type == Operation.TYPE_BUY]
+    sell_operations, buy_operations = [], []
+    for op in operations:
+        if op.type == Operation.TYPE_SELL:
+            sell_operations.append(op)
+        else:
+            buy_operations.append(op)
     return buy_operations, sell_operations
 
 
@@ -267,11 +266,12 @@ def _get_compiled_balances(crypto_assets, fiat_asset, instant):
     for crypto_asset in crypto_assets:
         balance = exchange.get_asset_balance(asset=crypto_asset)
         fiat_price = exchange.get_asset_price(base_asset=crypto_asset, quote_asset=fiat_asset, instant=instant)
-        total_balance += balance * fiat_price
+        fiat_balance = balance * fiat_price
+        total_balance += fiat_balance
         compiled_data[crypto_asset] = {
             'balance': balance,
             'avg_price': fiat_price,
-            'fiat': balance * fiat_price,
+            'fiat': fiat_balance,
         }
     return compiled_data, current_fiat_balance, total_balance
 
