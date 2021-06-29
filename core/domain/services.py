@@ -63,7 +63,12 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
             else:
                 row.append('NOTHING')
             summary.append(row)
-        user_interface.show_table(headers=headers, rows=summary, total_balance=f'{fiat_asset} {round(total_balance, fiat_decimals)}')
+        user_interface.show_table(
+            headers=headers,
+            rows=summary,
+            total_balance=f'{fiat_asset} {round(total_balance, fiat_decimals)}',
+            total_number_of_operations=f'{len(final_operations)}'
+        )
 
     # if there is nothing to do, return
     if len(final_operations) == 0:

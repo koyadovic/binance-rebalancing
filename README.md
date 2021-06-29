@@ -10,7 +10,7 @@ source env/bin/activate
 pip install -r requirements.txt
 ```
 
-This was tested with Python 3.8.
+This was tested with Python 3.7+
 
 Some common configurations that might be needed are exposed:
 
@@ -71,7 +71,7 @@ export BINANCE_API_SECRET=<api_secret>
 
 ## Execution
 
-Each execution, will retrieve what the crypto balances are and will ask you if you want to rebalance to keep the proportions specified in `settings.py` file.
+Each execution, will retrieve what the crypto balances are and will ask you if you want to rebalance to keep the assets allocations as close as possible to the values specified into `settings.py` file.
 
 ```
 $ python rebalance.py 
@@ -79,14 +79,37 @@ $ python rebalance.py
 | Symbol | Wanted amount | Wanted % |    Current    | Current % |    Action    |
 |        |               |          |    amount     |           |              |
 +========+===============+==========+===============+===========+==============+
-|  BTC   |    $464.48    |   50%    |     $0.0      |   0.0%    | BUY $464.48  |
+|  BTC   |  BUSD XXX.X   |  10.0%   |  BUSD XXX.XX  |   9.88%   |     SELL     |
+|        |               |          |               |           |   LINK/BTC   |
+|        |               |          |               |           |  0.000XXXXX  |
 +--------+---------------+----------+---------------+-----------+--------------+
-|  ETH   |    $464.48    |   50%    |    $928.96    |  100.0%   | SELL $464.48 |
+|  ETH   |  BUSD XXX.X   |  10.0%   |  BUSD XXX.XX  |   9.83%   |   NOTHING    |
 +--------+---------------+----------+---------------+-----------+--------------+
-TOTAL BALANCE: $928.96
+|  BNB   |  BUSD XXX.X   |  10.0%   |  BUSD XXX.XX  |   9.83%   |   NOTHING    |
++--------+---------------+----------+---------------+-----------+--------------+
+|  ADA   |  BUSD XXX.X   |  10.0%   |  BUSD XXX.XX  |   9.93%   |   NOTHING    |
++--------+---------------+----------+---------------+-----------+--------------+
+|  UNI   |  BUSD XXX.X   |  10.0%   |  BUSD XXX.XX  |  10.14%   |   NOTHING    |
++--------+---------------+----------+---------------+-----------+--------------+
+|  VET   |  BUSD XXX.X   |  10.0%   |  BUSD XXX.X   |  10.35%   |     SELL     |
+|        |               |          |               |           |   VET/BUSD   |
+|        |               |          |               |           |   XX.XXXX    |
++--------+---------------+----------+---------------+-----------+--------------+
+|  DOT   |  BUSD XXX.X   |  10.0%   |  BUSD XXX.XX  |  10.09%   |   NOTHING    |
++--------+---------------+----------+---------------+-----------+--------------+
+|  SOL   |  BUSD XXX.X   |  10.0%   |  BUSD XXX.X   |   9.82%   |   NOTHING    |
++--------+---------------+----------+---------------+-----------+--------------+
+| MATIC  |  BUSD XXX.X   |  10.0%   |  BUSD XXX.X   |   9.84%   |   NOTHING    |
++--------+---------------+----------+---------------+-----------+--------------+
+|  LINK  |  BUSD XXX.X   |  10.0%   |  BUSD XXX.XX  |  10.12%   |     SELL     |
+|        |               |          |               |           |   LINK/BTC   |
+|        |               |          |               |           |  0.000XXXXX  |
++--------+---------------+----------+---------------+-----------+--------------+
 
+Total balance: BUSD XXXX.XX
+Total number of operations: 2
 Proceed with rebalance?
-(y/n) 
+(y/n)
 ```
 
 For a periodic rebalance you can use crontab with `bin/rebalance.sh` bash script. Create `.environment` file with the following content:
