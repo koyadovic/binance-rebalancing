@@ -32,7 +32,7 @@ assets = [
 
 ]
 # day_ranges = [90, 180, 360]
-day_ranges = [180]
+day_ranges = [360]
 periods = {
     '1h': timedelta(hours=1),
     '1d': timedelta(days=1),
@@ -44,10 +44,12 @@ exposures.reverse()
 initial_fiat_investments = [5000, 10000, 20000]
 
 
-def get_all_assets_combinations(required=None):
+def get_all_assets_combinations(required=None, minimum_number=1):
     for n in range(len(assets)):
         for combination in list(itertools.combinations(assets, n + 1)):
             current_combination = list(combination)
+            if len(current_combination) < minimum_number:
+                continue
             if required is not None:
                 valid = True
                 for asset_required in required:
@@ -96,7 +98,6 @@ def main():
     # maybe we can use this data for the study
     # read activity/README.md
     # init_activity_module()
-    # all_assets_combinations = list(get_all_assets_combinations(required=['BTC', 'BNB', 'ETH']))
 
     with open('simulation.csv', mode='w') as simulation_file:
         simulation_writer = csv.writer(simulation_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -106,7 +107,7 @@ def main():
             'Rebalance Profit', 'HODL Profit', 'Profit related to HODL strategy',
         ])
 
-    all_assets_combinations = list(get_all_assets_combinations())
+    all_assets_combinations = list(get_all_assets_combinations(minimum_number=2))
     pending_tasks_args = []
     for start_date, end_date, tag in simulation_dates:
         for initial_fiat_invest in initial_fiat_investments:
