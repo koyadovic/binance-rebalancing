@@ -19,8 +19,6 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
 
     now = now or datetime.utcnow().replace(tzinfo=pytz.utc)
 
-    raise Exception('Test')
-
     # dependencies
     user_interface: AbstractUserInterface = dependency_dispatcher.request_implementation(AbstractUserInterface)
     exchange: AbstractExchange = dependency_dispatcher.request_implementation(AbstractExchange)
