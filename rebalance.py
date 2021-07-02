@@ -1,6 +1,6 @@
 from core.bootstrap import init_core_module
-from activity.bootstrap import init_activity_module
 from core.domain import services as rebalancing_services
+from activity.bootstrap import init_activity_module
 
 import settings
 import sys

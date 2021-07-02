@@ -73,7 +73,7 @@ class BinanceSimulationExchange(BinanceExchange):
         if f'{name}' in self._month_prices:
             return self._month_prices[name]
 
-        filename = f'data/{name}.json'
+        filename = f'core/intrastructure/exchange_binance_simulation_prices/{name}.json'
         if not os.path.isfile(filename):
             start_date_str = instant.strftime('1 %b, %Y')
             try:

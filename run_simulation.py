@@ -7,6 +7,7 @@ from datetime import timedelta, datetime
 from core.bootstrap import init_core_module_for_simulations
 from core.domain import services as rebalancing_services
 from core.domain.distribution import EqualDistribution
+from core.domain.exceptions import CannotExecuteOperation
 from shared.domain.dependencies import dependency_dispatcher
 
 
@@ -176,17 +177,20 @@ def _processing_function(start_date, end_date, current_assets, initial_fiat_inve
         # empezar en el día que sea, e iterar periodo a periodo rebalanceando
         # los resultados tendrían que ser volcados a un CSV con las columnas:
 
-        rebalancing_services.rebalance(
-            crypto_assets=current_assets,
-            fiat_asset=fiat_asset,
-            fiat_decimals=fiat_decimals,
-            fiat_untouched=fiat_untouched,
-            exposure=exposure,
-            with_confirmation=False,
-            now=now,
-            distribution=distributor,
-            quiet=True
-        )
+        try:
+            rebalancing_services.rebalance(
+                crypto_assets=current_assets,
+                fiat_asset=fiat_asset,
+                fiat_decimals=fiat_decimals,
+                fiat_untouched=fiat_untouched,
+                exposure=exposure,
+                with_confirmation=False,
+                now=now,
+                distribution=distributor,
+                quiet=True
+            )
+        except CannotExecuteOperation as e:
+            print(str(e))
 
         if not have_hodl_balances:
             hodl_balances = {fiat_asset: 0.0}
@@ -201,17 +205,20 @@ def _processing_function(start_date, end_date, current_assets, initial_fiat_inve
 
     if now > end_date:
         now = end_date
-        rebalancing_services.rebalance(
-            crypto_assets=current_assets,
-            fiat_asset=fiat_asset,
-            fiat_decimals=fiat_decimals,
-            fiat_untouched=fiat_untouched,
-            exposure=exposure,
-            with_confirmation=False,
-            now=now,
-            distribution=distributor,
-            quiet=True
-        )
+        try:
+            rebalancing_services.rebalance(
+                crypto_assets=current_assets,
+                fiat_asset=fiat_asset,
+                fiat_decimals=fiat_decimals,
+                fiat_untouched=fiat_untouched,
+                exposure=exposure,
+                with_confirmation=False,
+                now=now,
+                distribution=distributor,
+                quiet=True
+            )
+        except CannotExecuteOperation as e:
+            print(str(e))
 
     # save all produced data to use later for the study
     last_execution_balances = dict(exchange.balances)

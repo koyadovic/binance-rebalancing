@@ -2,18 +2,14 @@ import itertools
 
 from core.domain.distribution import Distribution
 from core.domain.entities import Operation
-from core.domain.interfaces import AbstractExchange, AbstractUserInterface
+from core.domain.exceptions import CannotExecuteOperation
+from core.domain.interfaces import AbstractExchange, AbstractUserInterface, AbstractDebugPlatform
 from core.domain.tools import number_similarity
 from shared.domain.dependencies import dependency_dispatcher
 from shared.domain.event_dispatcher import event_dispatcher
 
 from datetime import datetime
 import pytz
-import logging
-
-
-logging.basicConfig(level=logging.WARNING)
-logger = logging.getLogger()
 
 
 def rebalance(crypto_assets: list = None, fiat_asset: str = None,
@@ -23,7 +19,7 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
 
     now = now or datetime.utcnow().replace(tzinfo=pytz.utc)
 
-    logger.info(f'rebalance at {now}: {crypto_assets}, {fiat_asset}, {fiat_decimals}, {fiat_untouched}, {exposure}')
+    raise Exception('Test')
 
     # dependencies
     user_interface: AbstractUserInterface = dependency_dispatcher.request_implementation(AbstractUserInterface)
@@ -89,7 +85,7 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
                 valid_operation = exchange.get_exchange_valid_operations([operation])
                 result = exchange.execute_operations(valid_operation, fiat_asset=fiat_asset, instant=now)
                 if len(valid_operation) > 0 and len(result) > 0:
-                    logger.warning(f'Cannot process operation {operation}')
+                    raise CannotExecuteOperation(f'Cannot process operation {operation}')
 
     compiled_data, current_fiat_balance, total_balance = _get_compiled_balances(crypto_assets, fiat_asset, now)
     for crypto_asset in crypto_assets:

@@ -43,3 +43,11 @@ class AbstractUserInterface:
 
     def show_message(self, text: str):
         raise NotImplementedError
+
+
+class AbstractDebugPlatform:
+    def register_exception(self, exception):
+        raise NotImplementedError
+
+    def register_message(self, message: str):
+        raise NotImplementedError
