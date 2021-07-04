@@ -18,6 +18,7 @@ class BinanceSimulationExchange(BinanceExchange):
     def __init__(self, api_key=None, api_secret=None):
         super().__init__(api_key=api_key, api_secret=api_secret)
         self._month_prices = {}
+        self._last_price_candles = {}
         self.balances = {}
 
     def reset_balances(self, fiat_asset, fiat_balance):
@@ -168,16 +169,21 @@ class BinanceSimulationExchange(BinanceExchange):
         else:
             return []
 
-        all_prices = self.get_list_month_prices(pair.split('/')[0], pair.split('/')[1], now)
-        current_instant = now
-        start_instant = now - (delta * amount) - timedelta(days=1)
-        while current_instant > start_instant:
-            try:
-                current_instant = datetime(current_instant.year, current_instant.month - 1, current_instant.day, 0, 0, 0)
-            except ValueError:
-                current_instant = datetime(current_instant.year - 1, 12, current_instant.day, 0, 0, 0)
-            current_month_prices = self.get_list_month_prices(pair.split('/')[0], pair.split('/')[1], current_instant)
-            all_prices = current_month_prices + all_prices
+        name = f'{pair}_{period}_{amount}_{now.year}_{now.month}'
+        try:
+            all_prices = self._last_price_candles[name]
+        except KeyError:
+            all_prices = self.get_list_month_prices(pair.split('/')[0], pair.split('/')[1], now)
+            current_instant = now
+            start_instant = now - (delta * amount) - timedelta(days=1)
+            while current_instant >= start_instant:
+                try:
+                    current_instant = datetime(current_instant.year, current_instant.month - 1, current_instant.day, 0, 0, 0)
+                except ValueError:
+                    current_instant = datetime(current_instant.year - 1, 12, current_instant.day, 0, 0, 0)
+                current_month_prices = self.get_list_month_prices(pair.split('/')[0], pair.split('/')[1], current_instant)
+                all_prices = current_month_prices + all_prices
+            self._last_price_candles[name] = all_prices
 
         results = []
         start_date = now - (delta * amount)
@@ -185,23 +191,21 @@ class BinanceSimulationExchange(BinanceExchange):
         for price in all_prices:
             if price['utc_datetime'] > now or price['utc_datetime'] < start_date:
                 continue
-
-            if price['utc_datetime'] != current_date_check:
+            while price['utc_datetime'] != current_date_check:
                 results.append(None)
-            else:
-                results.append(
-                    Candle(
-                        instant=price['utc_datetime'],
-                        period=period,
-                        pair=pair,
-                        o=price['open'],
-                        c=price['close'],
-                        h=price['high'],
-                        l=price['low'],
-                        volume=price['volume']
-                    )
+                current_date_check += delta
+            results.append(
+                Candle(
+                    instant=price['utc_datetime'],
+                    period=period,
+                    pair=pair,
+                    o=price['open'],
+                    c=price['close'],
+                    h=price['high'],
+                    l=price['low'],
+                    volume=price['volume']
                 )
-
+            )
             current_date_check += delta
 
         return results[-amount:]
