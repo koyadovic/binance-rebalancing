@@ -1,15 +1,13 @@
 import itertools
-
 from core.domain.distribution import Distribution
 from core.domain.entities import Operation
 from core.domain.exceptions import CannotExecuteOperation
-from core.domain.interfaces import AbstractExchange, AbstractUserInterface, AbstractDebugPlatform
+from core.domain.interfaces import AbstractExchange, AbstractUserInterface
 from core.domain.tools import number_similarity
 from shared.domain.dependencies import dependency_dispatcher
 from shared.domain.event_dispatcher import event_dispatcher
 
 from datetime import datetime
-import pytz
 
 
 def rebalance(crypto_assets: list = None, fiat_asset: str = None,
@@ -17,7 +15,7 @@ def rebalance(crypto_assets: list = None, fiat_asset: str = None,
               exposure: float = None, with_confirmation=True, quiet=False,
               now=None, distribution: Distribution = None):
 
-    now = now or datetime.utcnow().replace(tzinfo=pytz.utc)
+    now = now or datetime.utcnow()
 
     # dependencies
     user_interface: AbstractUserInterface = dependency_dispatcher.request_implementation(AbstractUserInterface)

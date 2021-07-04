@@ -1,4 +1,6 @@
-from core.domain.entities import Operation
+from datetime import datetime
+
+from core.domain.entities import Operation, Candle
 
 from typing import List
 
@@ -28,6 +30,10 @@ class AbstractExchange:
 
     def execute_operations(self, operations: List[Operation], **kwargs) -> List[Operation]:
         # must return unprocessed operations
+        raise NotImplementedError
+
+    def get_last_price_candles(self, pair: str, period: str, amount: int, now: datetime) -> List[Candle]:
+        # pair must be in the format "<base>/<quote>"
         raise NotImplementedError
 
     def exchange_pair_exist(self, base_asset, quote_asset) -> bool:

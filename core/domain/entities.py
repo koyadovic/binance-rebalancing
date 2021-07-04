@@ -1,3 +1,6 @@
+from datetime import datetime
+
+
 class Operation:
     pair: str
     type: str
@@ -35,3 +38,39 @@ class Operation:
 
     def clone(self):
         return Operation(pair=self.pair, type=self.type, quote_amount=self.quote_amount)
+
+
+class Candle:
+    instant: datetime
+    pair: str
+    period: str
+
+    open: float
+    close: float
+    high: float
+    low: float
+
+    volume: float
+
+    PERIOD_HOUR = '1h'
+
+    __slots__ = ('instant', 'pair', 'period', 'open', 'close', 'high', 'low', 'volume')
+
+    def __init__(self, instant=None, pair=None, period=None, o=None, c=None, h=None, l=None, volume=None):
+        self.instant = instant
+        self.pair = pair
+        self.open = o
+        self.close = c
+        self.high = h
+        self.low = l
+        self.period = period
+        self.volume = volume
+
+    def __str__(self):
+        return f'[{self.instant}] {self.pair} O:{self.open} H:{self.high} L:{self.low} C:{self.close} VOL: {self.volume}'
+
+    def __repr__(self):
+        return self.__str__()
+
+    def compute_profit(self):
+        return ((self.close - self.open) / self.open) * 100.

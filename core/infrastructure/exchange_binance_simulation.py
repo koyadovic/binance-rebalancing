@@ -3,7 +3,7 @@ import os
 from datetime import datetime, timedelta
 from typing import List
 
-from core.domain.entities import Operation
+from core.domain.entities import Operation, Candle
 from binance import Client
 
 from core.infrastructure.exchange_binance import BinanceExchange
@@ -73,6 +73,15 @@ class BinanceSimulationExchange(BinanceExchange):
         if f'{name}' in self._month_prices:
             return self._month_prices[name]
 
+        prices = self.get_list_month_prices(base_asset, quote_asset, instant)
+
+        dict_prices = {price['utc_datetime']: price for price in prices}
+        self._month_prices[name] = dict_prices
+        return dict_prices
+
+    @execution_with_attempts(attempts=3, wait_seconds=5)
+    def get_list_month_prices(self, base_asset, quote_asset, instant):
+        name = f'{base_asset}{quote_asset}_{instant.year}_{instant.month}'
         filename = f'core/infrastructure/exchange_binance_simulation_prices/{name}.json'
         if not os.path.isfile(filename):
             start_date_str = instant.strftime('1 %b, %Y')
@@ -103,11 +112,8 @@ class BinanceSimulationExchange(BinanceExchange):
             } for item in data
         ]
         if len(prices) == 0:
-            raise Exception(f'There is no prices in {name}')
-
-        dict_prices = {price['utc_datetime']: price for price in prices}
-        self._month_prices[name] = dict_prices
-        return dict_prices
+            raise Exception(f'There is no prices in {base_asset} {quote_asset} at {instant}')
+        return prices
 
     @classmethod
     def parse_data_item(cls, data_item):
@@ -154,6 +160,51 @@ class BinanceSimulationExchange(BinanceExchange):
                     self.balances[operation.quote_currency] -= operation_fiat_amount / quote_fiat_price
                     self.balances[operation.base_currency] += operation_fiat_amount / base_fiat_price
         return unprocessed
+
+    def get_last_price_candles(self, pair: str, period: str, amount: int, now: datetime) -> List[Candle]:
+        if period == Candle.PERIOD_HOUR:
+            delta = timedelta(hours=1)
+            now = datetime(now.year, now.month, now.day, now.hour, 0, 0)
+        else:
+            return []
+
+        all_prices = self.get_list_month_prices(pair.split('/')[0], pair.split('/')[1], now)
+        current_instant = now
+        start_instant = now - (delta * amount) - timedelta(days=1)
+        while current_instant > start_instant:
+            try:
+                current_instant = datetime(current_instant.year, current_instant.month - 1, current_instant.day, 0, 0, 0)
+            except ValueError:
+                current_instant = datetime(current_instant.year - 1, 12, current_instant.day, 0, 0, 0)
+            current_month_prices = self.get_list_month_prices(pair.split('/')[0], pair.split('/')[1], current_instant)
+            all_prices = current_month_prices + all_prices
+
+        results = []
+        start_date = now - (delta * amount)
+        current_date_check = datetime(start_date.year, start_date.month, start_date.day, start_date.hour, 0, 0)
+        for price in all_prices:
+            if price['utc_datetime'] > now or price['utc_datetime'] < start_date:
+                continue
+
+            if price['utc_datetime'] != current_date_check:
+                results.append(None)
+            else:
+                results.append(
+                    Candle(
+                        instant=price['utc_datetime'],
+                        period=period,
+                        pair=pair,
+                        o=price['open'],
+                        c=price['close'],
+                        h=price['high'],
+                        l=price['low'],
+                        volume=price['volume']
+                    )
+                )
+
+            current_date_check += delta
+
+        return results[-amount:]
 
     @classmethod
     def _get_exchange_info(cls):

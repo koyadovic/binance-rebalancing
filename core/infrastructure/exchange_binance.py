@@ -1,8 +1,9 @@
+from datetime import datetime, timedelta
 from typing import List, Tuple
 
 import requests
 
-from core.domain.entities import Operation
+from core.domain.entities import Operation, Candle
 from core.domain.interfaces import AbstractExchange
 from binance import Client
 
@@ -115,6 +116,39 @@ class BinanceExchange(AbstractExchange):
                 unprocessed.append(operation)
 
         return unprocessed
+
+    @execution_with_attempts(attempts=3, wait_seconds=5)
+    def get_last_price_candles(self, pair: str, period: str, amount: int, now: datetime) -> List[Candle]:
+        end_date_str = (now + timedelta(days=1)).strftime('%d %b, %Y')
+        if period == Candle.PERIOD_HOUR:
+            delta = timedelta(hours=1)
+            b_interval = Client.KLINE_INTERVAL_1HOUR
+        else:
+            return []
+        start_date = now - (delta * amount)
+        start_date_str = (start_date - timedelta(days=1)).strftime('%d %b, %Y')
+
+        raw_data = self.client.get_historical_klines(
+            f'{pair.split("/")[0]}{pair.split("/")[1]}', b_interval, start_date_str, end_date_str
+        )
+
+        results = []
+        current_date_check = datetime(start_date.year, start_date.month, start_date.day, start_date.hour, 0, 0)
+        for item in raw_data:
+            instant = datetime.utcfromtimestamp(item[0] / 1000)
+            if instant > now or instant < start_date:
+                continue
+
+            current_date_check += delta
+
+            if instant != current_date_check:
+                results.append(None)
+            else:
+                current_candle = Candle(instant=instant, period=period, pair=pair, o=float(item[1]), c=float(item[4]),
+                                        h=float(item[2]), l=float(item[3]), volume=float(item[5]))
+                results.append(current_candle)
+
+        return results
 
     def exchange_pair_exist(self, base_asset, quote_asset) -> bool:
         return f'{base_asset}{quote_asset}' in self._get_exchange_info()
