@@ -29,7 +29,7 @@ jsonschema==3.2.0
 jupyter-client==6.1.12
 jupyter-core==4.7.1
 jupyter-server==1.8.0
-jupyterlab==3.0.16
+jupyterlab==3.0.17
 jupyterlab-pygments==0.1.2
 jupyterlab-server==2.6.0
 jupyterlab-widgets==1.0.0
@@ -46,7 +46,7 @@ nbconvert==6.0.7
 nbformat==5.1.3
 nest-asyncio==1.5.1
 nodejs==0.1.1
-notebook==6.4.0
+notebook==6.4.1
 numpy==1.20.3
 optional-django==0.1.0
 packaging==20.9
@@ -55,7 +55,7 @@ pandocfilters==1.4.3
 parso==0.8.2
 pexpect==4.8.0
 pickleshare==0.7.5
-Pillow==8.2.0
+Pillow==8.3.2
 prometheus-client==0.11.0
 prompt-toolkit==3.0.18
 ptyprocess==0.7.0
