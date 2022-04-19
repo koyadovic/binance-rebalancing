@@ -160,4 +160,4 @@ Instead of running everything using rebalance.py and settings.py, could be feasi
 
 ## Donations
 
-If you found it helpful, and want to contribute, Bitcoin donations are appreciated at the address `bc1qhhps2klg6wr54lm2yedd9dhtwe9xsjmqz0w545`
+If you found it helpful, and want to contribute, Bitcoin donations are appreciated at the address `bc1qgza37lrfqxsexezxe6a5ksj887ejj5fs7uqp7q`
